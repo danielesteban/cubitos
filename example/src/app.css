@@ -1,0 +1,189 @@
+:root {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+  color: #333;
+  cursor: default;
+  user-select: none;
+  overflow: hidden;
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  line-height: 1.125rem;
+}
+
+canvas {
+  vertical-align: middle;
+}
+
+#debug {
+  user-select: all;
+}
+
+#fps {
+  display: inline-block;
+  width: 32px;
+  text-align: center;
+}
+
+#info {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  text-align: right;
+  opacity: 0.5;
+}
+
+#info a {
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+  text-decoration: underline;
+}
+
+#loading {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+#loading.enabled {
+  display: block;
+}
+
+#renderer {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+#ribbon {
+  width: 12.1em;
+  height: 12.1em;
+  position: absolute;
+  overflow: hidden;
+  top: 0;
+  right: 0;
+  pointer-events: none;
+  font-size: 13px;
+  text-decoration: none;
+  text-indent: -999999px;
+}
+
+#ribbon:before, #ribbon:after {
+  position: absolute;
+  display: block;
+  width: 15.38em;
+  height: 1.54em;
+  top: 3.23em;
+  right: -3.23em;
+  box-sizing: content-box;
+  transform: rotate(45deg);
+}
+
+#ribbon:before {
+  content: "";
+  padding: .38em 0;
+  background-color: #393;
+  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.15));
+  box-shadow: 0 .15em .23em 0 rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+#ribbon:after {
+  content: attr(data-ribbon);
+  color: #fff;
+  font: 700 1em monospace;
+  line-height: 1.54em;
+  text-decoration: none;
+  text-shadow: 0 -.08em rgba(0, 0, 0, 0.5);
+  text-align: center;
+  text-indent: 0;
+  padding: .15em 0;
+  margin: .15em 0;
+  border-width: .08em 0;
+  border-style: dotted;
+  border-color: #fff;
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #ribbon {
+  display: none;
+}
+
+@keyframes fade {
+  from {
+    backdrop-filter: blur(0px);
+    background: rgba(0, 0, 0, 0);
+  }
+  to {
+    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+.dialog {
+  animation: fade 0.25s forwards;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10001;
+}
+
+.dialog > div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #111;
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 3rem 4rem;
+  gap: 1rem;
+  font-size: 1.5rem;
+}
+
+.dialog h1 {
+  margin: 0;
+  padding: 1rem 0 2rem;
+  font-size: 3rem;
+}
+
+.dialog.controls {
+  display: none;
+}
+
+.dialog.controls.enabled {
+  display: block;
+}
+
+.dialog.controls > div {
+  align-items: flex-start;
+  flex-direction: row;
+  white-space: nowrap;
+  gap: 4rem;
+}
+
+.dialog.controls > div > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dialog.controls > div > div > div {
+  display: flex;
+}
+
+.dialog.controls > div > div > div > div:first-child {
+  width: 10rem;
+}
