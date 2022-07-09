@@ -19,6 +19,7 @@ class Input {
     this.pointer = new Vector2();
     this.speed = 4;
     this.target = target;
+    this.onContextMenu = this.onContextMenu.bind(this);
     this.onGamepadDisconnected = this.onGamepadDisconnected.bind(this);
     this.onGamepadConnected = this.onGamepadConnected.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
@@ -28,6 +29,7 @@ class Input {
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseWheel = this.onMouseWheel.bind(this);
     this.onPointerLock = this.onPointerLock.bind(this);
+    target.addEventListener('contextmenu', this.onContextMenu, false);
     window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected, false);
     window.addEventListener('gamepadconnected', this.onGamepadConnected, false);
     window.addEventListener('keydown', this.onKeyDown, false);
@@ -40,6 +42,7 @@ class Input {
   }
 
   dispose() {
+    target.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('gamepaddisconnected', this.onGamepadDisconnected);
     window.removeEventListener('gamepadconnected', this.onGamepadConnected);
     window.removeEventListener('keydown', this.onKeyDown);
@@ -94,6 +97,10 @@ class Input {
       buttons[`${button}Up`] = !state && buttons[button] !== state;
       buttons[button] = state;
     });
+  }
+
+  onContextMenu(e) {
+    e.preventDefault();
   }
 
   onGamepadDisconnected({ gamepad: { index } }) {

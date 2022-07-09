@@ -15,29 +15,15 @@ const fps = {
   count: 0,
   lastTick: clock.oldTime / 1000,
 };
-const renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance', stencil: false });
-renderer.outputEncoding = sRGBEncoding;
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.getElementById('renderer').appendChild(renderer.domElement);
+const renderer = new WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+  stencil: false,
+});
 const postprocessing = new PostProcessing({ samples: 4 });
 const scene = new Gameplay({ camera, renderer });
-
-window.addEventListener('contextmenu', (e) => e.preventDefault(), false);
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  postprocessing.onResize(window.innerWidth, window.innerHeight)
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-}, false);
-document.addEventListener('visibilitychange', () => {
-  const isVisible = document.visibilityState === 'visible';
-  if (isVisible) {
-    clock.start();
-    fps.count = -1;
-    fps.lastTick = (clock.oldTime / 1000);
-  }
-}, false);
-
+renderer.outputEncoding = sRGBEncoding;
+renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(() => {
   const delta = Math.min(clock.getDelta(), 1);
   const time = clock.oldTime / 1000;
@@ -54,14 +40,22 @@ renderer.setAnimationLoop(() => {
     fps.count = 0;
   }
 });
+document.getElementById('renderer').appendChild(renderer.domElement);
 
-{
-  const GL = renderer.getContext();
-  const ext = GL.getExtension('WEBGL_debug_renderer_info');
-  if (ext) {
-    document.getElementById('debug').innerText = GL.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  postprocessing.onResize(window.innerWidth, window.innerHeight)
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+}, false);
+document.addEventListener('visibilitychange', () => {
+  const isVisible = document.visibilityState === 'visible';
+  if (isVisible) {
+    clock.start();
+    fps.count = -1;
+    fps.lastTick = clock.oldTime / 1000;
   }
-}
+}, false);
 
 {
   const controls = document.createElement('div');
@@ -109,4 +103,12 @@ renderer.setAnimationLoop(() => {
     });
     wrapper.appendChild(group);
   });
+}
+
+{
+  const GL = renderer.getContext();
+  const ext = GL.getExtension('WEBGL_debug_renderer_info');
+  if (ext) {
+    document.getElementById('debug').innerText = GL.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+  }
 }
