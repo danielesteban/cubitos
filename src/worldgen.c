@@ -23,10 +23,10 @@ void generate(
         if (d > radius) {
           continue;
         }
-        const float n = fnlGetNoise3D(&noise, x, y, z);
+        const float n = fabs(fnlGetNoise3D(&noise, x, y, z));
         if (
-          fabs((float) (height - 2) * n) >= y
-          && d < radius * (0.8f + fabs(n) * 0.2f)
+          y < (height - 2) * n
+          && d < radius * (0.8f + 0.2f * n)
         ) {
           voxels[i] = 1;
         } else if (y > 0 && voxels[i - width] == 1) {
