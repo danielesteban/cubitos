@@ -23,6 +23,7 @@ export default ({
             seed
           );
           volume.memory.voxels.view.set(new Uint8Array(memory.buffer, voxels, size));
+          return volume;
         })
     ));
 };

@@ -43,8 +43,7 @@ class Gameplay extends Scene {
     this.player.frustum = new Frustum();
     this.player.isWalking = true;
     this.player.lastShot = 0;
-    this.player.position.set(48, 63, 48);
-    this.player.targetFloor = this.player.position.y;
+    this.player.targetFloor = 0;
     this.player.targetPosition = this.player.position.clone();
     this.player.targetRotation = this.player.camera.rotation.clone();
     this.player.add(camera);
@@ -57,15 +56,12 @@ class Gameplay extends Scene {
           width: 192,
           height: 128,
           depth: 192,
-          onLoad: () => resolve(volume),
+          onLoad: () => resolve(Worldgen({ volume })),
           onError: (err) => reject(err),
         });
       })
         .then((volume) => {
           this.volume = volume;
-          return Worldgen({ volume });
-        })
-        .then(() => {
           this.world = new World({
             material: new ChunkMaterial(new ChunkAtlas()),
             volume: this.volume,
@@ -77,7 +73,11 @@ class Gameplay extends Scene {
           this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
           this.add(this.projectiles);
 
-          this.player.position.divide(this.world.scale).floor();
+          this.player.position.set(
+            Math.floor(this.volume.width * 0.5),
+            this.volume.height - 1,
+            Math.floor(this.volume.depth * 0.5)
+          );
           this.player.position.y = this.volume.ground(this.player.position);
           this.player.position.x += 0.5;
           this.player.position.z += 0.5;
