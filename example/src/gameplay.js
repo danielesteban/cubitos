@@ -65,11 +65,8 @@ class Gameplay extends Scene {
             new ChunkMaterial({
               atlas,
               mapping: (face, value) => {
-                if (value === 2 && face === 1) {
-                  return 1;
-                }
-                if (value === 2 && face !== 2) {
-                  return 2;
+                if (face !== 2 && value === 2) {
+                  return face === 1 ? 1 : 2;
                 }
                 return 0;
               },

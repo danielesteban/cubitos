@@ -40,7 +40,10 @@ export default {
         contentBase: outputPath,
         port: 8080,
       }),
-      livereload(outputPath),
+      livereload({
+        watch: outputPath,
+        delay: 100,
+      }),
     ]),
   ],
   watch: { clearScreen: false },
