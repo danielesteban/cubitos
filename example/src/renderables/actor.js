@@ -189,7 +189,7 @@ class Actor extends Group {
   }
 
   setAction(action, timer) {
-    const { actions, action: current, onAction } = this;
+    const { actions, action: current } = this;
     this.actionTimer = timer;
     if (action === current) {
       return;
@@ -202,9 +202,6 @@ class Actor extends Group {
         [action, current].includes(actions.walking) ? 0.25 : 0.4,
         false
       );
-    if (onAction) {
-      onAction(action, current);
-    }
   }
 
   setPath(results, scale, onDestination) {

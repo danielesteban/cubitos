@@ -28,6 +28,16 @@ class Actors extends Group {
         return;
       }
       _from.copy(actor.position).divide(world.scale).floor();
+      const ground = world.volume.ground(_from, 4);
+      if (ground !== _from.y) {
+        _from.y = ground;
+        actor.position.copy(_from);
+        world.volume.obstacle(actor.obstacle, false, 4);
+        world.volume.obstacle(actor.obstacle.copy(_from), true, 4);
+        actor.position.x += 0.5;
+        actor.position.z += 0.5;
+        actor.position.multiply(world.scale);
+      }
       _to.copy(_from).addScaledVector(_offset.set(Math.random() - 0.5, 0.5, Math.random() - 0.5), 32).floor();
       _to.y = Math.min(_to.y, world.volume.height - 1);
       _to.y = world.volume.ground(_to, 4);
@@ -74,7 +84,7 @@ class Actors extends Group {
       .floor();
     actor.position.y = world.volume.ground(actor.position);
     actor.obstacle = actor.position.clone();
-    world.volume.obstacle(actor.position, true, 4);
+    world.volume.obstacle(actor.obstacle, true, 4);
     actor.position.x += 0.5;
     actor.position.z += 0.5;
     actor.position.multiply(world.scale);
