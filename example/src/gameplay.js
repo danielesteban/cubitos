@@ -8,10 +8,9 @@ import {
   Vector3,
 } from 'three';
 import { ChunkMaterial, Volume, World, Worldgen } from 'cubitos';
+import { loadModel, loadTexture } from './core/assets.js';
 import Actors from './core/actors.js';
-import ChunkAtlas from './core/atlas.js';
 import Input from './core/input.js';
-import loadModel from './core/models.js';
 import Projectiles from './core/projectiles.js';
 import SFX from './core/sfx.js';
 import Dome from './renderables/dome.js';
@@ -50,28 +49,38 @@ class Gameplay extends Scene {
     this.add(this.player);
 
     Promise.all([
-      loadModel('bot'),
-      new Promise((resolve, reject) => {
-        const volume = new Volume({
-          width: 192,
-          height: 128,
-          depth: 192,
-          onLoad: () => resolve(volume),
-          onError: (err) => reject(err),
-        });
-      })
-        .then((volume) => Worldgen({ volume }))
-        .then((volume) => {
-          this.world = new World({
-            material: new ChunkMaterial(new ChunkAtlas()),
-            volume,
+      loadModel('/models/bot.glb'),
+      Promise.all([
+        new Promise((resolve, reject) => {
+          const volume = new Volume({
+            width: 192,
+            height: 128,
+            depth: 192,
+            onLoad: () => resolve(Worldgen({ volume })),
+            onError: (err) => reject(err),
           });
+        }),
+        loadTexture('/textures/atlas.png')
+          .then((atlas) => (
+            new ChunkMaterial({
+              atlas,
+              mapping: (face, value) => {
+                if (value === 2 && face === 1) {
+                  return 1;
+                }
+                if (value === 2 && face !== 2) {
+                  return 2;
+                }
+                return 0;
+              },
+            })
+          )),
+      ])
+        .then(([volume, material]) => {
+          this.world = new World({ material, volume });
           this.world.scale.setScalar(0.5);
           this.world.updateMatrix();
           this.add(this.world);
-
-          this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
-          this.add(this.projectiles);
 
           this.player.position.set(
             Math.floor(volume.width * 0.5),
@@ -85,6 +94,9 @@ class Gameplay extends Scene {
           this.player.targetFloor = this.player.position.y;
           this.player.targetPosition.copy(this.player.position);
 
+          this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
+          this.add(this.projectiles);
+
           this.loading.classList.remove('enabled');
         }),
     ])
@@ -92,7 +104,7 @@ class Gameplay extends Scene {
         this.actors = new Actors({ count: 20, model: bot, world: this.world });
         this.add(this.actors);
       })
-      .catch((e) => console.log(e));
+      .catch((e) => console.error(e));
   }
 
   onAnimationTick(delta, time) {

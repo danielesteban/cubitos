@@ -1,7 +1,23 @@
-import { ShaderLib, ShaderMaterial, UniformsUtils } from 'three';
+import { DataArrayTexture, ShaderLib, ShaderMaterial, sRGBEncoding, UniformsUtils } from 'three';
 
 class ChunkMaterial extends ShaderMaterial {
-  constructor(atlas) {
+  constructor({ atlas, mapping }) {
+    if (atlas && !atlas.isDataArrayTexture) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = atlas.image.width;
+      canvas.height = atlas.image.height;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(atlas.image, 0, 0);
+      atlas = new DataArrayTexture(
+        ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+        canvas.width,
+        canvas.width,
+        canvas.height / canvas.width
+      );
+      atlas.encoding = sRGBEncoding;
+      atlas.needsUpdate = true;
+    }
     const { uniforms, vertexShader, fragmentShader } = ShaderLib.basic;
     super({
       fog: true,
@@ -113,6 +129,7 @@ class ChunkMaterial extends ShaderMaterial {
           ].join('\n')
         ),
     });
+    this.mapping = mapping;
   }
 }
 

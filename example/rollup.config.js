@@ -24,7 +24,6 @@ export default {
     ] : []),
     copy({
       targets: [{ src: 'public/*', dest: 'dist' }],
-      copyOnce: !production,
     }),
     resolve({
       browser: true,

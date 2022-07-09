@@ -25,11 +25,15 @@ class Chunk extends Mesh {
   static setupGeometry() {
     const plane = new PlaneGeometry(1, 1, 1, 1);
     plane.translate(0, 0, 0.5);
+    const uv = plane.getAttribute('uv');
+    for (let i = 0, l = uv.count; i < l; i++) {
+      uv.setXY(i, uv.getX(i), 1.0 - uv.getY(i));
+    }
     Chunk.geometry = {
       index: plane.getIndex(),
       position: plane.getAttribute('position'),
       normal: plane.getAttribute('normal'),
-      uv: plane.getAttribute('uv'),
+      uv,
     };
   }
 
@@ -68,8 +72,8 @@ class Chunk extends Mesh {
                 _box.min.set(cx, cy, cz);
                 _box.max.set(cx + 1, cy + 1, cz + 1);
                 _bounds.union(_box);
-                const texture = (material.uniforms.atlas.value && material.uniforms.atlas.value.map) ? (
-                  material.uniforms.atlas.value.map(face, value, _voxel)
+                const texture = material.mapping ? (
+                  material.mapping(face, value, _voxel)
                 ) : (
                   value - 1
                 );
