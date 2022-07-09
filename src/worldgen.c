@@ -20,26 +20,17 @@ void generate(
         const float dx = (x - width * 0.5f + 0.5f);
         const float dz = (z - depth * 0.5f + 0.5f);
         const float d = sqrt(dx * dx + dz * dz);
-        const float n = fnlGetNoise3D(&noise, x, y, z);
-        if (
-          d > radius
-          || (
-            d >= radius * 0.8f
-            && d > radius * (0.8f + fabs(n) * 0.2f)
-          )
-        ) {
+        if (d > radius) {
           continue;
         }
-        voxels[i] = fabs(fnlGetNoise3D(&noise, x, y, z) * (height - 2)) >= y ? 1 : 0;
-      }
-    }
-  }
-
-  for (int i = 0, z = 0; z < depth; z++) {
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++, i++) {
-        if (voxels[i] == 1 && voxels[i + width] == 0) {
-          voxels[i] = 2;
+        const float n = fnlGetNoise3D(&noise, x, y, z);
+        if (
+          fabs((float) (height - 2) * n) >= y
+          && d < radius * (0.8f + fabs(n) * 0.2f)
+        ) {
+          voxels[i] = 1;
+        } else if (y > 0 && voxels[i - width] == 1) {
+          voxels[i - width] = 2;
         }
       }
     }
