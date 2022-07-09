@@ -1,29 +1,25 @@
 import Program from './worldgen.wasm';
+import Worker from 'web-worker:./worldgen.worker.js';
 
 export default ({
-  frequency = 0.009,
+  frequency = 0.01,
   seed = Math.floor(Math.random() * 2147483647),
   volume,
-}) => {
-  const size = volume.width * volume.height * volume.depth;
-  const pages = Math.ceil(size / 65536) + 10;
-  const memory = new WebAssembly.Memory({ initial: pages, maximum: pages });
-  return Program()
-    .then((program) => (
-      WebAssembly
-        .instantiate(program, { env: { memory } })
-        .then((instance) => {
-          const voxels = instance.exports.malloc(size);
-          instance.exports.generate(
-            voxels,
-            volume.width,
-            volume.height,
-            volume.depth,
-            frequency,
-            seed
-          );
-          volume.memory.voxels.view.set(new Uint8Array(memory.buffer, voxels, size));
-          return volume;
-        })
-    ));
-};
+}) => (
+  Program().then((program) => new Promise((resolve) => {
+    const worker = new Worker();
+    worker.addEventListener('message', ({ data }) => {
+      volume.memory.voxels.view.set(data);
+      worker.terminate();
+      resolve(volume);
+    });
+    worker.postMessage({
+      program,
+      width: volume.width,
+      height: volume.height,
+      depth: volume.depth,
+      frequency,
+      seed,
+    });
+  }))
+);

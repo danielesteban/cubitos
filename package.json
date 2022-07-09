@@ -14,7 +14,9 @@
   "watch": {
     "build:wasm": {
       "extensions": "c",
-      "patterns": ["src/*.c"],
+      "patterns": [
+        "src/*.c"
+      ],
       "runOnChangeOnly": true
     }
   },
@@ -24,6 +26,7 @@
     "npm-watch": "^0.11.0",
     "rollup": "^2.76.0",
     "rollup-plugin-copy": "^3.4.0",
-    "rollup-plugin-terser": "^7.0.2"
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-web-worker-loader": "^1.6.1"
   }
 }

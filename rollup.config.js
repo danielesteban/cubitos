@@ -3,6 +3,7 @@ import path from 'path';
 import copy from 'rollup-plugin-copy';
 import { terser } from 'rollup-plugin-terser';
 import wasm from '@rollup/plugin-wasm';
+import webWorkerLoader from 'rollup-plugin-web-worker-loader';
 
 const outputPath = path.resolve(__dirname, 'dist');
 
@@ -24,6 +25,10 @@ export default {
     wasm({
       maxFileSize: Infinity,
     }),
+    webWorkerLoader({
+      forceInline: true,
+      skipPlugins: ['copy', 'wasm'],
+    }),
     {
       writeBundle() {
         fs.writeFileSync(path.join(outputPath, 'package.json'), JSON.stringify({
@@ -31,7 +36,7 @@ export default {
           author: 'Daniel Esteban Nombela',
           license: 'MIT',
           module: 'cubitos.js',
-          version: '0.0.4',
+          version: '0.0.5',
           repository: {
             type: 'git',
             url: 'https://github.com/danielesteban/cubitos',

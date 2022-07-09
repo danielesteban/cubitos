@@ -56,7 +56,7 @@ class Gameplay extends Scene {
             width: 192,
             height: 128,
             depth: 192,
-            onLoad: () => resolve(Worldgen({ volume })),
+            onLoad: () => resolve(Worldgen({ frequency: 0.009, volume })),
             onError: (err) => reject(err),
           });
         }),

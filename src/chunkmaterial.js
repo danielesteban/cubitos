@@ -1,7 +1,7 @@
 import { DataArrayTexture, ShaderLib, ShaderMaterial, sRGBEncoding, UniformsUtils } from 'three';
 
 class ChunkMaterial extends ShaderMaterial {
-  constructor({ atlas, mapping }) {
+  constructor({ atlas, mapping } = {}) {
     if (atlas && !atlas.isDataArrayTexture) {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
