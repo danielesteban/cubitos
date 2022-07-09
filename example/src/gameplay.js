@@ -10,8 +10,8 @@ import {
 import { ChunkMaterial, Volume, World, Worldgen } from 'cubitos';
 import Actors from './core/actors.js';
 import ChunkAtlas from './core/atlas.js';
-import loadModel from './core/models.js';
 import Input from './core/input.js';
+import loadModel from './core/models.js';
 import Projectiles from './core/projectiles.js';
 import SFX from './core/sfx.js';
 import Dome from './renderables/dome.js';
@@ -56,15 +56,15 @@ class Gameplay extends Scene {
           width: 192,
           height: 128,
           depth: 192,
-          onLoad: () => resolve(Worldgen({ volume })),
+          onLoad: () => resolve(volume),
           onError: (err) => reject(err),
         });
       })
+        .then((volume) => Worldgen({ volume }))
         .then((volume) => {
-          this.volume = volume;
           this.world = new World({
             material: new ChunkMaterial(new ChunkAtlas()),
-            volume: this.volume,
+            volume,
           });
           this.world.scale.setScalar(0.5);
           this.world.updateMatrix();
@@ -74,11 +74,11 @@ class Gameplay extends Scene {
           this.add(this.projectiles);
 
           this.player.position.set(
-            Math.floor(this.volume.width * 0.5),
-            this.volume.height - 1,
-            Math.floor(this.volume.depth * 0.5)
+            Math.floor(volume.width * 0.5),
+            volume.height - 1,
+            Math.floor(volume.depth * 0.5)
           );
-          this.player.position.y = this.volume.ground(this.player.position);
+          this.player.position.y = volume.ground(this.player.position);
           this.player.position.x += 0.5;
           this.player.position.z += 0.5;
           this.player.position.multiply(this.world.scale);
@@ -111,7 +111,7 @@ class Gameplay extends Scene {
   }
 
   processPlayerMovement(delta) {
-    const { input, player, volume, world } = this;
+    const { input, player, world } = this;
 
     if (input.look.x || input.look.y) {
       player.targetRotation.y += input.look.x;
@@ -144,7 +144,7 @@ class Gameplay extends Scene {
           .addScaledVector(_direction, step)
           .divide(world.scale)
           .floor();
-        const floor = volume.ground(_forward) * world.scale.y;
+        const floor = world.volume.ground(_forward) * world.scale.y;
         if (floor !== -1 && Math.abs(floor - player.targetPosition.y) < 2) {
           player.targetPosition.addScaledVector(_direction, step);
           player.targetFloor = floor;
@@ -167,7 +167,7 @@ class Gameplay extends Scene {
   }
   
   processPlayerInput(time) {
-    const { input, player, projectiles, volume, world } = this;
+    const { input, player, projectiles, world } = this;
     if (input.buttons.primary && time >= player.lastShot + 0.06) {
       player.lastShot = time;
       _origin.setFromMatrixPosition(player.camera.matrixWorld);
@@ -183,7 +183,7 @@ class Gameplay extends Scene {
     if (input.buttons.interactDown) {
       player.isWalking = !player.isWalking;
       if (player.isWalking) {
-        const y = volume.ground(_origin.copy(player.targetPosition).divide(world.scale).floor());
+        const y = world.volume.ground(_origin.copy(player.targetPosition).divide(world.scale).floor());
         if (y !== -1) {
           player.targetFloor = y * world.scale.y;
         }
