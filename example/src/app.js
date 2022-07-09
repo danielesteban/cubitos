@@ -55,7 +55,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-if (document.getElementById('debug')) {
+{
   const GL = renderer.getContext();
   const ext = GL.getExtension('WEBGL_debug_renderer_info');
   if (ext) {
@@ -63,7 +63,7 @@ if (document.getElementById('debug')) {
   }
 }
 
-if (document.getElementById('controls')) {
+{
   const controls = document.createElement('div');
   controls.classList.add('dialog', 'controls');
   const toggleControls = () => controls.classList.toggle('enabled');

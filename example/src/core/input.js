@@ -215,7 +215,7 @@ class Input {
     mouse.y -= movementY * 0.003;
     pointer.set(
       (clientX / window.innerWidth) * 2 - 1,
-	    -(clientY / window.innerHeight) * 2 + 1
+      -(clientY / window.innerHeight) * 2 + 1
     );
   }
 
