@@ -2,28 +2,11 @@ import { DataArrayTexture, ShaderLib, ShaderMaterial, sRGBEncoding, UniformsUtil
 
 class ChunkMaterial extends ShaderMaterial {
   constructor({ atlas, mapping } = {}) {
-    if (atlas && !atlas.isDataArrayTexture) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = atlas.image.width;
-      canvas.height = atlas.image.height;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(atlas.image, 0, 0);
-      atlas = new DataArrayTexture(
-        ctx.getImageData(0, 0, canvas.width, canvas.height).data,
-        canvas.width,
-        canvas.width,
-        canvas.height / canvas.width
-      );
-      atlas.encoding = sRGBEncoding;
-      atlas.needsUpdate = true;
-    }
     const { uniforms, vertexShader, fragmentShader } = ShaderLib.basic;
     super({
-      fog: true,
       uniforms: {
         ...UniformsUtils.clone(uniforms),
-        atlas: { value: atlas },
+        atlas: { value: null },
       },
       vertexShader: vertexShader
         .replace(
@@ -32,9 +15,9 @@ class ChunkMaterial extends ShaderMaterial {
             '#include <common>',
             'attribute vec4 face;',
             'varying vec3 fragNormal;',
-            ...(atlas ? [
-              'varying vec3 fragUV;'
-            ] : []),
+            '#ifdef USE_ATLAS',
+            'varying vec3 fragUV;',
+            '#endif',
             'mat3 rotateX(const in float rad) {',
             '  float c = cos(rad);',
             '  float s = sin(rad);',
@@ -67,7 +50,6 @@ class ChunkMaterial extends ShaderMaterial {
           '#include <project_vertex>',
           [
             'vec4 mvPosition = vec4(transformed, 1.0);',
-            'fragNormal = objectNormal;',
             'mat3 rot;',
             'switch (int(mod(face.w, 6.0))) {',
             '  default:',
@@ -92,10 +74,10 @@ class ChunkMaterial extends ShaderMaterial {
             'mvPosition.xyz = (rot * mvPosition.xyz) + face.xyz;',
             'mvPosition = modelViewMatrix * mvPosition;',
             'gl_Position = projectionMatrix * mvPosition;',
-            'fragNormal = normalMatrix * rot * fragNormal;',
-            ...(atlas ? [
-              'fragUV = vec3(uv, floor(face.w / 6.0));'
-            ] : []),
+            'fragNormal = normalMatrix * rot * objectNormal;',
+            '#ifdef USE_ATLAS',
+            'fragUV = vec3(uv, floor(face.w / 6.0));',
+            '#endif',
           ].join('\n')
         ),
       fragmentShader: fragmentShader
@@ -106,19 +88,19 @@ class ChunkMaterial extends ShaderMaterial {
             '#include <common>',
             'layout(location = 1) out vec4 pc_fragNormal;',
             'varying vec3 fragNormal;',
-            ...(atlas ? [
-              'uniform sampler2DArray atlas;',
-              'varying vec3 fragUV;',
-            ] : []),
+            '#ifdef USE_ATLAS',
+            'uniform sampler2DArray atlas;',
+            'varying vec3 fragUV;',
+            '#endif',
           ].join('\n')
         )
         .replace(
           '#include <map_fragment>',
           [
             '#include <map_fragment>',
-            ...(atlas ? [
-              'diffuseColor *= texture(atlas, fragUV);',
-            ] : []),
+            '#ifdef USE_ATLAS',
+            'diffuseColor *= texture(atlas, fragUV);',
+            '#endif',
           ].join('\n'),
         )
         .replace(
@@ -130,6 +112,32 @@ class ChunkMaterial extends ShaderMaterial {
         ),
     });
     this.mapping = mapping;
+    this.setAtlas(atlas);
+  }
+
+  setAtlas(atlas) {
+    const { defines, uniforms } = this;
+    if (atlas && !atlas.isDataArrayTexture) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = atlas.image.width;
+      canvas.height = atlas.image.height;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(atlas.image, 0, 0);
+      atlas = new DataArrayTexture(
+        ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+        canvas.width,
+        canvas.width,
+        canvas.height / canvas.width
+      );
+      atlas.encoding = sRGBEncoding;
+      atlas.needsUpdate = true;
+    }
+    if (defines.USE_ATLAS !== !!atlas) {
+      defines.USE_ATLAS = !!atlas;
+      this.needsUpdate = true;
+    }
+    uniforms.atlas.value = atlas;
   }
 }
 

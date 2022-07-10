@@ -21,7 +21,7 @@ const renderer = new WebGLRenderer({
   stencil: false,
 });
 const postprocessing = new PostProcessing({ samples: 4 });
-const scene = new Gameplay({ camera, renderer });
+const scene = new Gameplay({ camera, postprocessing, renderer });
 renderer.outputEncoding = sRGBEncoding;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(() => {

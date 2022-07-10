@@ -24,7 +24,7 @@ const _right = new Vector3();
 const _worldUp = new Vector3(0, 1, 0);
 
 class Gameplay extends Scene {
-  constructor({ camera, renderer }) {
+  constructor({ camera, postprocessing, renderer }) {
     super();
 
     this.dome = new Dome();
@@ -32,6 +32,7 @@ class Gameplay extends Scene {
     this.input = new Input(renderer.domElement);
     this.loading = document.getElementById('loading');
     this.loading.classList.add('enabled');
+    this.postprocessing = postprocessing;
     this.sfx = new SFX();
     this.add(this.sfx);
 
@@ -56,17 +57,20 @@ class Gameplay extends Scene {
             width: 192,
             height: 128,
             depth: 192,
-            onLoad: () => resolve(Worldgen({ frequency: 0.009, volume })),
+            onLoad: () => resolve(Worldgen({ frequency: 0.006, volume })),
             onError: (err) => reject(err),
           });
         }),
-        loadTexture('/textures/atlas.png')
+        loadTexture('/textures/atlas1.png')
           .then((atlas) => (
             new ChunkMaterial({
               atlas,
               mapping: (face, value) => {
-                if (face !== 2 && value === 2) {
-                  return face === 1 ? 1 : 2;
+                if (value === 2) {
+                  return 1;
+                }
+                if (face !== 2 && value === 3) {
+                  return face === 1 ? 2 : 3;
                 }
                 return 0;
               },
@@ -94,6 +98,8 @@ class Gameplay extends Scene {
           this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
           this.add(this.projectiles);
 
+          this.chunkMaterial = material;
+          this.chunkMaterial.atlasIndex = 0;
           this.loading.classList.remove('enabled');
         }),
     ])
@@ -176,7 +182,7 @@ class Gameplay extends Scene {
   }
   
   processPlayerInput(time) {
-    const { input, player, projectiles, world } = this;
+    const { chunkMaterial, input, player, postprocessing, projectiles, world } = this;
     if (input.buttons.primary && time >= player.lastShot + 0.06) {
       player.lastShot = time;
       _origin.setFromMatrixPosition(player.camera.matrixWorld);
@@ -188,6 +194,16 @@ class Gameplay extends Scene {
         origin: _origin,
         owner: player,
       });
+    }
+    if (input.buttons.secondaryDown) {
+      chunkMaterial.atlasIndex = (chunkMaterial.atlasIndex + 1) % 2;
+      loadTexture(`/textures/atlas${1 + chunkMaterial.atlasIndex}.png`)
+        .then((atlas) => {
+          chunkMaterial.setAtlas(atlas);
+          postprocessing.screen.material.uniforms.intensity.value = (
+            chunkMaterial.atlasIndex === 0 ? 0.5 : 0.8
+          );
+        });
     }
     if (input.buttons.interactDown) {
       player.isWalking = !player.isWalking;

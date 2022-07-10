@@ -9,10 +9,13 @@ void generate(
   const float frequency,
   const int seed
 ) {
-  fnl_state noise = fnlCreateState();
-  noise.fractal_type = FNL_FRACTAL_FBM;
-  noise.frequency = frequency;
-  noise.seed = seed;
+  fnl_state fbm = fnlCreateState();
+  fbm.fractal_type = FNL_FRACTAL_FBM;
+  fbm.frequency = frequency;
+  fbm.seed = seed;
+  fnl_state simplex = fnlCreateState();
+  simplex.frequency = frequency * 4.0f;
+  simplex.seed = seed;
   const float radius = fmax(width, depth) * 0.5f;
   for (int i = 0, z = 0; z < depth; z++) {
     for (int y = 0; y < height; y++) {
@@ -23,14 +26,14 @@ void generate(
         if (d > radius) {
           continue;
         }
-        const float n = fabs(fnlGetNoise3D(&noise, x, y, z));
+        const float n = fabs(fnlGetNoise3D(&fbm, x, y, z));
         if (
           y < (height - 2) * n
           && d < radius * (0.8f + 0.2f * n)
         ) {
-          voxels[i] = 1;
-        } else if (y > 0 && voxels[i - width] == 1) {
-          voxels[i - width] = 2;
+          voxels[i] = 2 - round(fabs(fnlGetNoise3D(&simplex, z, x, y)));
+        } else if (y > 0 && voxels[i - width] != 0) {
+          voxels[i - width] = 3;
         }
       }
     }
