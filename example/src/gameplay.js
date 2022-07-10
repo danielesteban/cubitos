@@ -78,8 +78,8 @@ class Gameplay extends Scene {
         .then(([atlas, volume]) => {
           this.world = new World({
             material: new ChunkMaterial({
-              ambientColor: new Color(0.05, 0.05, 0.05),
-              lightColor: new Color(0.9, 0.9, 0.7),
+              ambientColor: new Color(0.02, 0.02, 0.02),
+              lightColor: new Color(0.8, 0.8, 0.6),
               atlas,
             }),
             volume,
