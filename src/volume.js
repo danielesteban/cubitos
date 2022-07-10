@@ -27,7 +27,6 @@ class Volume {
       { id: 'obstacles', type: Uint8Array, size: width * height * depth },
       { id: 'bounds', type: Float32Array, size: 4 },
       { id: 'faces', type: Float32Array, size: Math.ceil((chunkSize ** 3) * 0.5) * 6 * 5 },
-      { id: 'path', type: Int32Array, size: 4096 },
       { id: 'queueA', type: Int32Array, size: width * depth },
       { id: 'queueB', type: Int32Array, size: width * depth },
       { id: 'queueC', type: Int32Array, size: width * depth },
@@ -125,7 +124,7 @@ class Volume {
       memory.volume.address,
       memory.voxels.address,
       memory.obstacles.address,
-      memory.path.address,
+      memory.queueA.address,
       height,
       maxVisited,
       Math.max(minY, 0),
@@ -137,7 +136,7 @@ class Volume {
       to.y,
       to.z
     );
-    return memory.path.view.subarray(0, nodes * 3);
+    return memory.queueA.view.subarray(0, nodes * 3);
   }
 
   propagate() {

@@ -36,7 +36,7 @@ export default {
           author: 'Daniel Esteban Nombela',
           license: 'MIT',
           module: 'cubitos.js',
-          version: '0.0.9',
+          version: '0.0.10',
           repository: {
             type: 'git',
             url: 'https://github.com/danielesteban/cubitos',
