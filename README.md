@@ -8,7 +8,7 @@
 
 * World:
   * Demo: [cubitos.gatunes.com](https://cubitos.gatunes.com)
-  * Source: [example/gameplay.js](example/gameplay.js)
+  * Source: [example/src/gameplay.js](example/src/gameplay.js)
 
 * Random walkers:
   * Demo: [cubitos-walkers.glitch.me](https://cubitos-walkers.glitch.me)
