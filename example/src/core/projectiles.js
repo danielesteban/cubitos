@@ -74,7 +74,7 @@ class Projectiles extends Group {
   blast({ color, origin, radius }) {
     const { explosions, pools, sfx, world } = this;
     _voxel.copy(origin).divide(world.scale).floor();
-    world.update(_voxel, radius, 0);
+    world.update(_voxel, radius, (d, v, p) => p.y === 0 ? -1 : 0);
     sfx.playAt('blast', origin, 'lowpass', 1000 + Math.random() * 1000);
     const explosion = pools.explosions.pop() || new Explosion();
     explosion.color.copy(color);

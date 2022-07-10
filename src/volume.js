@@ -2,20 +2,35 @@ import Program from './volume.wasm';
 
 class Volume {
   constructor({
+    chunkSize = 32,
+    mapping = (f, v) => (v - 1),
     width,
     height,
     depth,
     onLoad,
     onError,
   }) {
+    if (width % chunkSize || height % chunkSize || depth % chunkSize) {
+      if (onError) {
+        onError(new Error(`width, height and depth must be multiples of ${chunkSize}`));
+      }
+      return;
+    }
+    this.chunkSize = chunkSize;
     this.width = width;
     this.height = height;
     this.depth = depth;
     const layout = [
-      { id: 'obstacles', type: Uint8Array, size: width * height * depth },
-      { id: 'voxels', type: Uint8Array, size: width * height * depth },
-      { id: 'path', type: Int32Array, size: 4096 },
       { id: 'volume', type: Int32Array, size: 3 },
+      { id: 'voxels', type: Uint8Array, size: width * height * depth },
+      { id: 'light', type: Uint8Array, size: width * height * depth },
+      { id: 'obstacles', type: Uint8Array, size: width * height * depth },
+      { id: 'bounds', type: Float32Array, size: 4 },
+      { id: 'faces', type: Float32Array, size: Math.ceil((chunkSize ** 3) * 0.5) * 6 * 5 },
+      { id: 'path', type: Int32Array, size: 4096 },
+      { id: 'queueA', type: Int32Array, size: width * depth },
+      { id: 'queueB', type: Int32Array, size: width * depth },
+      { id: 'queueC', type: Int32Array, size: width * depth },
     ];
     const pages = Math.ceil(layout.reduce((total, { type, size }) => (
       total + size * type.BYTES_PER_ELEMENT
@@ -24,7 +39,7 @@ class Volume {
     Program()
       .then((program) => (
         WebAssembly
-          .instantiate(program, { env: { memory } })
+          .instantiate(program, { env: { memory, mapping } })
           .then((instance) => {
             this.memory = layout.reduce((layout, { id, type, size }) => {
               const address = instance.exports.malloc(size * type.BYTES_PER_ELEMENT);
@@ -36,7 +51,10 @@ class Volume {
             }, {});
             this.memory.volume.view.set([width, height, depth]);
             this._ground = instance.exports.ground;
+            this._mesh = instance.exports.mesh;
             this._pathfind = instance.exports.pathfind;
+            this._propagate = instance.exports.propagate;
+            this._update = instance.exports.update;
             this._voxel = instance.exports.voxel;
           })
       ))
@@ -62,6 +80,26 @@ class Volume {
       position.y,
       position.z
     );
+  }
+
+  mesh(chunk) {
+    const { chunkSize, memory, _mesh } = this;
+    const count = _mesh(
+      memory.volume.address,
+      memory.voxels.address,
+      memory.light.address,
+      memory.bounds.address,
+      memory.faces.address,
+      chunkSize,
+      chunk.x,
+      chunk.y,
+      chunk.z
+    );
+    return {
+      bounds: memory.bounds.view,
+      count,
+      faces: new Float32Array(memory.faces.view.subarray(0, count * 5)),
+    };
   }
 
   obstacle(position, enabled, height = 1) {
@@ -99,10 +137,36 @@ class Volume {
       to.y,
       to.z
     );
-    if (nodes === -1) {
-      throw new Error('Requested path is out of bounds');
-    }
     return memory.path.view.subarray(0, nodes * 3);
+  }
+
+  propagate() {
+    const { memory, _propagate } = this;
+    _propagate(
+      memory.volume.address,
+      memory.voxels.address,
+      memory.light.address,
+      memory.queueA.address,
+      memory.queueB.address
+    );
+    return this;
+  }
+
+  update(position, value, updateLight = true) {
+    const { memory, _update } = this;
+    _update(
+      memory.volume.address,
+      memory.voxels.address,
+      memory.light.address,
+      memory.queueA.address,
+      memory.queueB.address,
+      memory.queueC.address,
+      position.x,
+      position.y,
+      position.z,
+      value,
+      updateLight
+    );
   }
 
   voxel(position) {

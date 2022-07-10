@@ -52,33 +52,38 @@ class Gameplay extends Scene {
     Promise.all([
       loadModel('/models/bot.glb'),
       Promise.all([
+        loadTexture('/textures/atlas1.png'),
         new Promise((resolve, reject) => {
           const volume = new Volume({
             width: 192,
             height: 128,
             depth: 192,
-            onLoad: () => resolve(Worldgen({ frequency: 0.006, volume })),
+            mapping: (face, value) => {
+              if (value === 2) {
+                return 1;
+              }
+              if (face !== 2 && value === 3) {
+                return face === 1 ? 2 : 3;
+              }
+              return 0;
+            },
+            onLoad: () => resolve(
+              Worldgen({ frequency: 0.006, volume })
+                .then(() => volume.propagate())
+            ),
             onError: (err) => reject(err),
           });
         }),
-        loadTexture('/textures/atlas1.png')
-          .then((atlas) => (
-            new ChunkMaterial({
-              atlas,
-              mapping: (face, value) => {
-                if (value === 2) {
-                  return 1;
-                }
-                if (face !== 2 && value === 3) {
-                  return face === 1 ? 2 : 3;
-                }
-                return 0;
-              },
-            })
-          )),
       ])
-        .then(([volume, material]) => {
-          this.world = new World({ material, volume });
+        .then(([atlas, volume]) => {
+          this.world = new World({
+            material: new ChunkMaterial({
+              ambientColor: new Color(0.05, 0.05, 0.05),
+              lightColor: new Color(0.9, 0.9, 0.7),
+              atlas,
+            }),
+            volume,
+          });
           this.world.scale.setScalar(0.5);
           this.world.updateMatrix();
           this.add(this.world);
@@ -98,8 +103,7 @@ class Gameplay extends Scene {
           this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
           this.add(this.projectiles);
 
-          this.chunkMaterial = material;
-          this.chunkMaterial.atlasIndex = 0;
+          this.world.atlasIndex = 0;
           this.loading.classList.remove('enabled');
         }),
     ])
@@ -182,7 +186,7 @@ class Gameplay extends Scene {
   }
   
   processPlayerInput(time) {
-    const { chunkMaterial, input, player, postprocessing, projectiles, world } = this;
+    const { input, player, postprocessing, projectiles, world } = this;
     if (input.buttons.primary && time >= player.lastShot + 0.06) {
       player.lastShot = time;
       _origin.setFromMatrixPosition(player.camera.matrixWorld);
@@ -196,12 +200,12 @@ class Gameplay extends Scene {
       });
     }
     if (input.buttons.secondaryDown) {
-      chunkMaterial.atlasIndex = (chunkMaterial.atlasIndex + 1) % 2;
-      loadTexture(`/textures/atlas${1 + chunkMaterial.atlasIndex}.png`)
+      world.atlasIndex = (world.atlasIndex + 1) % 2;
+      loadTexture(`/textures/atlas${1 + world.atlasIndex}.png`)
         .then((atlas) => {
-          chunkMaterial.setAtlas(atlas);
+          world.material.setAtlas(atlas);
           postprocessing.screen.material.uniforms.intensity.value = (
-            chunkMaterial.atlasIndex === 0 ? 0.5 : 0.8
+            world.atlasIndex === 0 ? 0.5 : 0.8
           );
         });
     }

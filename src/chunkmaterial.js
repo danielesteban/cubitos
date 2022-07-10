@@ -1,12 +1,29 @@
-import { DataArrayTexture, ShaderLib, ShaderMaterial, sRGBEncoding, UniformsUtils } from 'three';
+import {
+  Color,
+  DataArrayTexture,
+  ShaderLib,
+  ShaderMaterial,
+  sRGBEncoding,
+  UniformsUtils,
+} from 'three';
 
 class ChunkMaterial extends ShaderMaterial {
-  constructor({ atlas, mapping } = {}) {
+  constructor({
+    atlas,
+    ambientColor = new Color(0, 0, 0),
+    lightColor = new Color(1, 1, 1),
+    light = true,
+  } = {}) {
     const { uniforms, vertexShader, fragmentShader } = ShaderLib.basic;
     super({
+      defines: {
+        USE_LIGHT: !!light,
+      },
       uniforms: {
         ...UniformsUtils.clone(uniforms),
         atlas: { value: null },
+        ambientColor: { value: ambientColor },
+        lightColor: { value: lightColor },
       },
       vertexShader: vertexShader
         .replace(
@@ -15,6 +32,10 @@ class ChunkMaterial extends ShaderMaterial {
             '#include <common>',
             'attribute vec4 face;',
             'varying vec3 fragNormal;',
+            '#ifdef USE_LIGHT',
+            'attribute float light;',
+            'varying float fragLight;',
+            '#endif',
             '#ifdef USE_ATLAS',
             'varying vec3 fragUV;',
             '#endif',
@@ -74,6 +95,9 @@ class ChunkMaterial extends ShaderMaterial {
             'mvPosition.xyz = (rot * mvPosition.xyz) + face.xyz;',
             'mvPosition = modelViewMatrix * mvPosition;',
             'gl_Position = projectionMatrix * mvPosition;',
+            '#ifdef USE_LIGHT',
+            'fragLight = light;',
+            '#endif',
             'fragNormal = normalMatrix * rot * objectNormal;',
             '#ifdef USE_ATLAS',
             'fragUV = vec3(uv, floor(face.w / 6.0));',
@@ -84,11 +108,16 @@ class ChunkMaterial extends ShaderMaterial {
         .replace(
           '#include <common>',
           [
-            'precision highp sampler2DArray;',
             '#include <common>',
             'layout(location = 1) out vec4 pc_fragNormal;',
             'varying vec3 fragNormal;',
+            '#ifdef USE_LIGHT',
+            'varying float fragLight;',
+            'uniform vec3 ambientColor;',
+            'uniform vec3 lightColor;',
+            '#endif',
             '#ifdef USE_ATLAS',
+            'precision highp sampler2DArray;',
             'uniform sampler2DArray atlas;',
             'varying vec3 fragUV;',
             '#endif',
@@ -98,6 +127,9 @@ class ChunkMaterial extends ShaderMaterial {
           '#include <map_fragment>',
           [
             '#include <map_fragment>',
+            '#ifdef USE_LIGHT',
+            'diffuseColor.rgb *= max(ambientColor, lightColor * fragLight);',
+            '#endif',
             '#ifdef USE_ATLAS',
             'diffuseColor *= texture(atlas, fragUV);',
             '#endif',
@@ -111,7 +143,6 @@ class ChunkMaterial extends ShaderMaterial {
           ].join('\n')
         ),
     });
-    this.mapping = mapping;
     this.setAtlas(atlas);
   }
 
@@ -137,7 +168,7 @@ class ChunkMaterial extends ShaderMaterial {
       defines.USE_ATLAS = !!atlas;
       this.needsUpdate = true;
     }
-    uniforms.atlas.value = atlas;
+    uniforms.atlas.value = atlas || null;
   }
 }
 

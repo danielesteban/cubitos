@@ -7,53 +7,6 @@ typedef struct {
   const int depth;
 } Volume;
 
-const int voxel(
-  const Volume* volume,
-  const int x,
-  const int y,
-  const int z
-) {
-  if (
-    x < 0 || x >= volume->width
-    || y < 0 || y >= volume->height
-    || z < 0 || z >= volume->depth
-  ) {
-    return -1;
-  }
-  return z * volume->width * volume->height + y * volume->width + x;
-}
-
-const int ground(
-  const Volume* volume,
-  const unsigned char* voxels,
-  const int height,
-  const int x,
-  int y,
-  const int z
-) {
-  if (
-    x < 0 || x >= volume->width
-    || y < 0 || y >= volume->height
-    || z < 0 || z >= volume->depth
-    || voxels[voxel(volume, x, y, z)]
-  ) {
-    return -1;
-  }
-  y--;
-  for (; y >= 0; y--) {
-    if (!voxels[voxel(volume, x, y, z)]) {
-      continue;
-    }
-    for (int h = 1; h <= height; h++) {
-      if (voxels[voxel(volume, x, y + h, z)]) {
-        return -1;
-      }
-    }
-    return y + 1;
-  }
-  return 0;
-}
-
 typedef struct {
   int x;
   int y;
@@ -70,16 +23,211 @@ typedef struct {
   const int maxY;
 } PathContext;
 
+static const unsigned char maxLight = 32;
+
+static const int lightNeighbors[] = {
+  0, -1, 0,
+  0, 1, 0,
+  -1, 0, 0,
+  1, 0, 0,
+  0, 0, -1,
+  0, 0, 1
+};
+
+static const int meshNormals[] = {
+  0, 0, 1,    0, 1, 0,    1, 0, 0,
+  0, 1, 0,    0, 0, -1,   1, 0, 0,
+  0, -1, 0,   0, 0, 1,    1, 0, 0,
+  -1, 0, 0,   0, 1, 0,    0, 0, 1,
+  1, 0, 0,    0, 1, 0,    0, 0, 1,
+  0, 0, -1,   0, 1, 0,    -1, 0, 0
+};
+
+static const int meshLightSamples[] = {
+  0, 0,
+  -1, 0,
+  1, 0,
+  0, -1,
+  0, 1
+};
+
 static const int horizontalNeighbors[] = {
   -1, 0,
   1, 0,
   0, -1,
-  0, 1,
+  0, 1
 };
 
 static const int verticalNeighbors[] = {
   0, 1, -1
 };
+
+const int voxel(
+  const Volume* volume,
+  const int x,
+  const int y,
+  const int z
+) {
+  if (
+    x < 0 || x >= volume->width
+    || y < 0 || y >= volume->height
+    || z < 0 || z >= volume->depth
+  ) {
+    return -1;
+  }
+  return z * volume->width * volume->height + y * volume->width + x;
+}
+
+static void floodLight(
+  const Volume* volume,
+  unsigned char* voxels,
+  unsigned char* light,
+  int* queue,
+  const unsigned int size,
+  int* next
+) {
+  unsigned int nextLength = 0;
+  for (unsigned int q = 0; q < size; q++) {
+    const int i = queue[q];
+    const unsigned char level = light[i];
+    if (level == 0) {
+      continue;
+    }
+    const int z = floor(i / (volume->width * volume->height)),
+              y = floor((i % (volume->width * volume->height)) / volume->width),
+              x = floor((i % (volume->width * volume->height)) % volume->width);
+    for (unsigned char n = 0; n < 6; n++) {
+      const int nx = x + lightNeighbors[n * 3],
+                ny = y + lightNeighbors[n * 3 + 1],
+                nz = z + lightNeighbors[n * 3 + 2],
+                neighbor = voxel(volume, nx, ny, nz);
+      const unsigned char nl = level - (n == 0 && level == maxLight ? 0 : 1);
+      if (
+        neighbor == -1
+        || light[neighbor] >= nl
+        || voxels[neighbor]
+      ) {
+        continue;
+      }
+      light[neighbor] = nl;
+      next[nextLength++] = neighbor;
+    }
+  }
+  if (nextLength > 0) {
+    floodLight(
+      volume,
+      voxels,
+      light,
+      next,
+      nextLength,
+      queue
+    );
+  }
+}
+
+static void removeLight(
+  const Volume* volume,
+  unsigned char* voxels,
+  unsigned char* light,
+  int* queue,
+  const unsigned int size,
+  int* next,
+  int* floodQueue,
+  unsigned int floodQueueSize
+) {
+  unsigned int nextLength = 0;
+  for (int q = 0; q < size; q += 2) {
+    const int i = queue[q];
+    const unsigned char level = queue[q + 1];
+    const int z = floor(i / (volume->width * volume->height)),
+              y = floor((i % (volume->width * volume->height)) / volume->width),
+              x = floor((i % (volume->width * volume->height)) % volume->width);
+    for (unsigned char n = 0; n < 6; n++) {
+      const int neighbor = voxel(
+        volume,
+        x + lightNeighbors[n * 3],
+        y + lightNeighbors[n * 3 + 1],
+        z + lightNeighbors[n * 3 + 2]
+      );
+      if (neighbor == -1 || voxels[neighbor]) {
+        continue;
+      }
+      const unsigned char nl = light[neighbor];
+      if (nl == 0) {
+        continue;
+      }
+      if (
+        nl < level
+        || (
+          n == 0
+          && level == maxLight
+          && nl == maxLight
+        )
+      ) {
+        next[nextLength++] = neighbor;
+        next[nextLength++] = nl;
+        light[neighbor] = 0;
+      } else if (nl >= level) {
+        floodQueue[floodQueueSize++] = neighbor;
+      }
+    }
+  }
+  if (nextLength > 0) {
+    removeLight(
+      volume,
+      voxels,
+      light,
+      next,
+      nextLength,
+      queue,
+      floodQueue,
+      floodQueueSize
+    );
+  } else if (floodQueueSize > 0) {
+    floodLight(
+      volume,
+      voxels,
+      light,
+      floodQueue,
+      floodQueueSize,
+      queue
+    );
+  }
+}
+
+static const float lighting(
+  const Volume* volume,
+  const unsigned char* voxels,
+  const unsigned char* light,
+  const unsigned char face,
+  const int x,
+  const int y,
+  const int z
+) {
+  const int vx = meshNormals[face * 9],
+            vy = meshNormals[face * 9 + 1],
+            vz = meshNormals[face * 9 + 2],
+            ux = meshNormals[face * 9 + 3],
+            uy = meshNormals[face * 9 + 4],
+            uz = meshNormals[face * 9 + 5];
+  float count = 0.0f;
+  float level = 0.0f;
+  for (int s = 0; s < 5; s++) {
+    const int u = meshLightSamples[s * 2],
+              v = meshLightSamples[s * 2 + 1],
+              n = voxel(
+                volume,
+                x + ux * u + vx * v,
+                y + uy * u + vy * v,
+                z + uz * u + vz * v
+              );
+    if (n != -1 && !voxels[n]) {
+      level += (float) light[n];
+      count++;
+    }
+  }
+  return level / count / (float) maxLight;
+}
 
 static const bool canGoThrough(
   const PathContext* context,
@@ -148,6 +296,104 @@ static const ASPathNodeSource PathNodeSource = {
   NULL
 };
 
+const int ground(
+  const Volume* volume,
+  const unsigned char* voxels,
+  const int height,
+  const int x,
+  int y,
+  const int z
+) {
+  if (
+    x < 0 || x >= volume->width
+    || y < 0 || y >= volume->height
+    || z < 0 || z >= volume->depth
+    || voxels[voxel(volume, x, y, z)]
+  ) {
+    return -1;
+  }
+  y--;
+  for (; y >= 0; y--) {
+    if (!voxels[voxel(volume, x, y, z)]) {
+      continue;
+    }
+    for (int h = 1; h <= height; h++) {
+      if (voxels[voxel(volume, x, y + h, z)]) {
+        return -1;
+      }
+    }
+    return y + 1;
+  }
+  return 0;
+}
+
+int mapping(int face, int value, int x, int y, int z);
+
+int mesh(
+  const Volume* volume,
+  const unsigned char* voxels,
+  const unsigned char* light,
+  float* bounds,
+  float* faces,
+  const char chunkSize,
+  const int chunkX,
+  const int chunkY,
+  const int chunkZ
+) {
+  int count = 0;
+  int offset = 0;
+  unsigned char box[6] = { chunkSize, chunkSize, chunkSize, 0, 0, 0 };
+  for (int z = chunkZ; z < chunkZ + chunkSize; z++) {
+    for (int y = chunkY; y < chunkY + chunkSize; y++) {
+      for (int x = chunkX; x < chunkX + chunkSize; x++) {
+        const unsigned char value = voxels[voxel(volume, x, y, z)];
+        if (value) {
+          const int cx = x - chunkX,
+                    cy = y - chunkY,
+                    cz = z - chunkZ;
+          bool isVisible = false;
+          for (unsigned char face = 0; face < 6; face++) {
+            const int nx = x + meshNormals[face * 9],
+                      ny = y + meshNormals[face * 9 + 1],
+                      nz = z + meshNormals[face * 9 + 2],
+                      neighbor = voxel(volume, nx, ny, nz);
+            if (neighbor != -1 && !voxels[neighbor]) {
+              isVisible = true;
+              const float texture = mapping(face, value, x, y, z);
+              faces[offset++] = cx + 0.5f;
+              faces[offset++] = cy + 0.5f;
+              faces[offset++] = cz + 0.5f;
+              faces[offset++] = texture * 6.0f + (float) face;
+              faces[offset++] = lighting(volume, voxels, light, face, nx, ny, nz);
+              count++;
+            }
+          }
+          if (isVisible) {
+            if (box[0] > cx) box[0] = cx;
+            if (box[1] > cy) box[1] = cy;
+            if (box[2] > cz) box[2] = cz;
+            if (box[3] < cx + 1) box[3] = cx + 1;
+            if (box[4] < cy + 1) box[4] = cy + 1;
+            if (box[5] < cz + 1) box[5] = cz + 1;
+          }
+        }
+      }
+    }
+  }
+  const float halfWidth = 0.5f * (box[3] - box[0]),
+              halfHeight = 0.5f * (box[4] - box[1]),
+              halfDepth = 0.5f * (box[5] - box[2]);
+  bounds[0] = 0.5f * (box[0] + box[3]);
+  bounds[1] = 0.5f * (box[1] + box[4]);
+  bounds[2] = 0.5f * (box[2] + box[5]);
+  bounds[3] = sqrt(
+    halfWidth * halfWidth
+    + halfHeight * halfHeight
+    + halfDepth * halfDepth
+  );
+  return count;
+}
+
 const int pathfind(
   const Volume* volume,
   const unsigned char* voxels,
@@ -172,7 +418,7 @@ const int pathfind(
     || toY < 0 || toY >= volume->height
     || toZ < 0 || toZ >= volume->depth
   ) {
-    return -1;
+    return 0;
   }
   ASPath path = ASPathCreate(
     &PathNodeSource,
@@ -189,4 +435,102 @@ const int pathfind(
   }
   ASPathDestroy(path);
   return nodes;
+}
+
+void propagate(
+  const Volume* volume,
+  unsigned char* voxels,
+  unsigned char* light,
+  int* queueA,
+  int* queueB
+) {
+  unsigned int count = 0;
+  for (int z = 0; z < volume->depth; z++) {
+    for (int x = 0; x < volume->width; x++) {
+      const int i = voxel(volume, x, volume->height - 1, z);
+      if (!voxels[i]) {
+        light[i] = maxLight;
+        queueA[count++] = i;
+      }
+    }
+  }
+  floodLight(
+    volume,
+    voxels,
+    light,
+    queueA,
+    count,
+    queueB
+  );
+}
+
+void update(
+  const Volume* volume,
+  unsigned char* voxels,
+  unsigned char* light,
+  int* queueA,
+  int* queueB,
+  int* queueC,
+  const int x,
+  const int y,
+  const int z,
+  const unsigned char value,
+  const unsigned char updateLight
+) {
+  const int i = voxel(volume, x, y, z);
+  if (i == -1) {
+    return;
+  }
+  const unsigned char current = voxels[i];
+  if (current == value) {
+    return;
+  }
+  voxels[i] = value;
+
+  if (!updateLight) {
+    return;
+  }
+
+  if (value && !current) {
+    const unsigned char level = light[i];
+    if (level != 0) {
+      light[i] = 0;
+      queueA[0] = i;
+      queueA[1] = level;
+      removeLight(
+        volume,
+        voxels,
+        light,
+        queueA,
+        2,
+        queueB,
+        queueC,
+        0
+      );
+    }
+  }
+  if (!value && current) {
+    unsigned int queueSize = 0;
+    for (unsigned char n = 0; n < 6; n++) {
+      const int neighbor = voxel(
+        volume,
+        x + lightNeighbors[n * 3],
+        y + lightNeighbors[n * 3 + 1],
+        z + lightNeighbors[n * 3 + 2]
+      );
+      if (neighbor != -1 && light[neighbor]) {
+        queueA[queueSize++] = neighbor;
+      }
+    }
+    if (queueSize > 0) {
+      floodLight(
+        volume,
+        voxels,
+        light,
+        queueA,
+        queueSize,
+        queueC
+      );
+    }
+  }
 }
