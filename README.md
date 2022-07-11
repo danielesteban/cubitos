@@ -13,6 +13,8 @@
 * Random walkers:
   * Demo: [cubitos-walkers.glitch.me](https://cubitos-walkers.glitch.me)
   * Source: [glitch.com/edit/#!/cubitos-walkers](https://glitch.com/edit/#!/cubitos-walkers)
+  * Demo (react-three-fiber): [bp2ljx.csb.app](https://bp2ljx.csb.app)
+  * Source (react-three-fiber): [codesandbox.io/s/cubitos-bp2ljx](https://codesandbox.io/s/cubitos-bp2ljx)
 
 ### Installation
 
