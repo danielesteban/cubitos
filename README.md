@@ -109,7 +109,7 @@ const ground = volume.ground(
 
 // Returns a list of positions
 // to move an actor from A to B
-const pathfind = volume.ground({
+const path = volume.pathfind({
   // Starting position
   from: new Vector3(0, 0, 0),
   // Destination
