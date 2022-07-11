@@ -16,6 +16,12 @@ import SFX from './core/sfx.js';
 import Dome from './renderables/dome.js';
 
 const _color = new Color();
+const _grid = [
+  [0, 0],
+  [-1, -1], [0, -1], [1, -1],
+  [-1, 0], [1, 0],
+  [-1, 1], [0, 1], [1, 1],
+].map(([x, z]) => new Vector3(x * 0.25, 0, z * 0.25));
 const _origin = new Vector3();
 const _direction = new Vector3();
 const _forward = new Vector3();
@@ -157,14 +163,33 @@ class Gameplay extends Scene {
       }
       const step = input.speed * (input.buttons.run ? 2 : 1) * delta;
       if (player.isWalking) {
+        let canMove = true;
+        let floor = player.targetFloor;
         player.camera.getWorldPosition(_forward)
           .sub(player.position)
           .add(player.targetPosition)
-          .addScaledVector(_direction, step)
-          .divide(world.scale)
-          .floor();
-        const floor = world.volume.ground(_forward) * world.scale.y;
-        if (floor !== -1 && Math.abs(floor - player.targetPosition.y) < 2) {
+          .addScaledVector(_direction, step);
+        for (let i = 0, l = _grid.length; i < l; i++) {
+          _origin
+            .copy(_forward)
+            .add(_grid[i])
+            .divide(world.scale)
+            .floor();
+          if (i === 0) {
+            _origin.y = Math.max(world.volume.ground(_origin, 4), 1);
+            floor = _origin.y * world.scale.y;
+            if (Math.abs(floor - player.targetPosition.y) > 1.25) {
+              canMove = false;
+              break;
+            }
+          }
+          const voxel = world.volume.voxel(_origin);
+          if (voxel !== -1 && world.volume.memory.voxels.view[voxel]) {
+            canMove = false;
+            break;
+          }
+        }
+        if (canMove) {
           player.targetPosition.addScaledVector(_direction, step);
           player.targetFloor = floor;
         }

@@ -46,7 +46,7 @@ class Actors extends Group {
       _to.copy(_from).addScaledVector(_offset.set(Math.random() - 0.5, Math.random() - 0.25, Math.random() - 0.5), 32).floor();
       _to.y = Math.min(_to.y, world.volume.height - 1);
       _to.y = world.volume.ground(_to, 4);
-      if (_to.y === -1) {
+      if (_to.y <= 0) {
         actor.waiting = Math.random();
         return;
       }
