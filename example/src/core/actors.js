@@ -11,6 +11,10 @@ class Actors extends Group {
     this.matrixAutoUpdate = false;
     this.model = model;
     this.world = world;
+    Actor.setupMaterial();
+    ['ambientColor', 'lightColor'].forEach((uniform) => {
+      Actor.material.uniforms[uniform].value = world.material.uniforms[uniform].value;
+    });
     for (let i = 0; i < count; i++) {
       this.spawn();
     }
@@ -37,11 +41,13 @@ class Actors extends Group {
         actor.position.x += 0.5;
         actor.position.z += 0.5;
         actor.position.multiply(world.scale);
+        actor.setLight(actor.position);
       }
-      _to.copy(_from).addScaledVector(_offset.set(Math.random() - 0.5, 0.5, Math.random() - 0.5), 32).floor();
+      _to.copy(_from).addScaledVector(_offset.set(Math.random() - 0.5, Math.random() - 0.25, Math.random() - 0.5), 32).floor();
       _to.y = Math.min(_to.y, world.volume.height - 1);
       _to.y = world.volume.ground(_to, 4);
-      if (_to.y <= 0) {
+      if (_to.y === -1) {
+        actor.waiting = Math.random();
         return;
       }
       const result = world.volume.pathfind({
@@ -51,6 +57,7 @@ class Actors extends Group {
         height: 4,
       });
       if (result.length <= 3) {
+        actor.waiting = Math.random();
         return;
       }
       actor.setPath(
@@ -65,6 +72,14 @@ class Actors extends Group {
     });
   }
 
+  light(position) {
+    const { world } = this;
+    _from.copy(position).divide(world.scale).floor();
+    _from.y += 2;
+    const voxel = world.volume.voxel(_from);
+    return voxel !== -1 ? (world.volume.memory.light.view[voxel] / 32) : 1;
+  }
+
   spawn() {
     const { model: { animations, model }, world } = this;
     const actor = new Actor({
@@ -73,6 +88,7 @@ class Actors extends Group {
         Joints: new Color(0.4, 0.4, 0.4),
         Surface: (new Color()).setHSL(Math.random(), 0.4 + Math.random() * 0.2, 0.5 + Math.random() * 0.2),
       },
+      light: this.light.bind(this),
       model: model(),
     });
     actor.position
@@ -88,6 +104,7 @@ class Actors extends Group {
     actor.position.x += 0.5;
     actor.position.z += 0.5;
     actor.position.multiply(world.scale);
+    actor.setLight(actor.position);
     this.add(actor);
   }
 }

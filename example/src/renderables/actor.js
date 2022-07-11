@@ -1,6 +1,7 @@
 import {
   AnimationMixer,
   Box3,
+  Color,
   Group,
   MathUtils,
   Vector3,
@@ -16,7 +17,12 @@ class Actor extends Group {
   static setupMaterial() {
     const { uniforms, vertexShader, fragmentShader } = ShaderLib.basic;
     Actor.material = new ShaderMaterial({
-      uniforms: UniformsUtils.clone(uniforms),
+      uniforms: {
+        ...UniformsUtils.clone(uniforms),
+        ambientColor: { value: new Color(0, 0, 0) },
+        lightColor: { value: new Color(1, 1, 1) },
+        light: { value: 1 },
+      },
       vertexShader: vertexShader
         .replace(
           '#include <common>',
@@ -43,7 +49,17 @@ class Actor extends Group {
             '#include <common>',
             'layout(location = 1) out vec4 pc_fragNormal;',
             'varying vec3 fragNormal;',
+            'uniform vec3 ambientColor;',
+            'uniform vec3 lightColor;',
+            'uniform float light;',
           ].join('\n')
+        )
+        .replace(
+          '#include <map_fragment>',
+          [
+            '#include <map_fragment>',
+            'diffuseColor.rgb *= max(ambientColor, lightColor * light);',
+          ].join('\n'),
         )
         .replace(
           '#include <dithering_fragment>',
@@ -59,11 +75,12 @@ class Actor extends Group {
     animations,
     colors,
     model,
+    light,
     walkingBaseSpeed = 3,
   }) {
     if (!Actor.material) {
       Actor.setupMaterial();
-    };
+    }
     super();
     this.mixer = new AnimationMixer(model);
     this.actions = animations.reduce((actions, clip) => {
@@ -78,6 +95,11 @@ class Actor extends Group {
     this.action.enabled = true;
     this.collider = new Box3(new Vector3(-0.25, 0, -0.25), new Vector3(0.25, 2, 0.25));
     this.colors = colors;
+    this.light = {
+      get: light,
+      target: 1,
+      value: 1,
+    };
     this.rotation.set(0, 0, 0, 'YXZ');
     this.targetRotation = 0;
     this.setWalkingSpeed(3);
@@ -86,8 +108,9 @@ class Actor extends Group {
         const material = child.material.name;
         child.material = Actor.material;
         child.onBeforeRender = () => {
-          const { colors } = this;
+          const { colors, light } = this;
           child.material.uniforms.diffuse.value.copy(colors[material]);
+          child.material.uniforms.light.value = light.value;
           child.material.uniformsNeedUpdate = true;
         };
         child.frustumCulled = false;
@@ -106,6 +129,7 @@ class Actor extends Group {
     const {
       actions,
       mixer,
+      light,
       rotation,
       targetRotation,
       walkingSpeed,
@@ -116,6 +140,9 @@ class Actor extends Group {
       if (this.actionTimer <= 0) {
         this.setAction(actions.idle);
       }
+    }
+    if (Math.abs(light.target - light.value) > 0.01) {
+      light.value = MathUtils.damp(light.value, light.target, walkingSpeed * 1.5, delta);
     }
     if (Math.abs(targetRotation - rotation.y) > 0.01) {
       rotation.y = MathUtils.damp(rotation.y, targetRotation, walkingSpeed * 1.5, delta);
@@ -184,7 +211,9 @@ class Actor extends Group {
       }
       this.setAction(action || actions.idle);
     } else {
-      this.setTarget(path[this.step + 1]);
+      const next = path[this.step + 1];
+      this.setLight(next);
+      this.setTarget(next);
     }
   }
 
@@ -204,6 +233,11 @@ class Actor extends Group {
       );
   }
 
+  setLight(position) {
+    const { light } = this;
+    light.target = light.get(position);
+  }
+
   setPath(results, scale, onDestination) {
     const { actions, position } = this;
     const path = [position.clone()];
@@ -220,6 +254,7 @@ class Actor extends Group {
     this.interpolation = 0;
     this.onDestination = onDestination;
     this.setAction(actions.walking);
+    this.setLight(path[1]);
     this.setTarget(path[1]);
   }
 
