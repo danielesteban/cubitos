@@ -178,7 +178,7 @@ class Gameplay extends Scene {
           if (i === 0) {
             _origin.y = Math.max(world.volume.ground(_origin, 4), 1);
             floor = _origin.y * world.scale.y;
-            if (Math.abs(floor - player.targetPosition.y) > 1.25) {
+            if (Math.abs(floor - player.targetPosition.y) > 2) {
               canMove = false;
               break;
             }
