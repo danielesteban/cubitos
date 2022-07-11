@@ -7,15 +7,24 @@ void generate(
   const int height,
   const int depth,
   const float frequency,
+  const float gain,
+  const float lacunarity,
+  const int octaves,
   const int seed
 ) {
   fnl_state fbm = fnlCreateState();
   fbm.fractal_type = FNL_FRACTAL_FBM;
   fbm.frequency = frequency;
+  fbm.gain = gain;
+  fbm.lacunarity = lacunarity;
+  fbm.octaves = octaves;
   fbm.seed = seed;
   fnl_state simplex = fnlCreateState();
-  simplex.frequency = frequency * 4.0f;
-  simplex.seed = seed;
+  simplex.frequency = fbm.frequency * 4.0f;
+  simplex.gain = fbm.gain;
+  simplex.lacunarity = fbm.lacunarity;
+  simplex.octaves = fbm.octaves;
+  simplex.seed = fbm.seed;
   const float radius = fmax(width, depth) * 0.5f;
   for (int i = 0, z = 0; z < depth; z++) {
     for (int y = 0; y < height; y++) {

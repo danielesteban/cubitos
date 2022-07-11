@@ -83,7 +83,13 @@ const volume = new Volume({
     // Generates terrain in a worker
     Worldgen({
       // Noise frequency (default: 0.01)
-      frequency: 0.006,
+      frequency: 0.01,
+      // Noise gain (default: 0.5)
+      gain: 0.5,
+      // Noise lacunarity (default: 2)
+      lacunarity: 2,
+      // Noise octaves (default: 3)
+      octaves: 3,
       // Noise seed (default: random)
       seed = 1337,
       // Volume instance

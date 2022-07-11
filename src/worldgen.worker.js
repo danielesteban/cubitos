@@ -5,6 +5,9 @@ self.addEventListener('message', ({
     height,
     depth,
     frequency,
+    gain,
+    lacunarity,
+    octaves,
     seed,
   },
 }) => {
@@ -21,6 +24,9 @@ self.addEventListener('message', ({
         height,
         depth,
         frequency,
+        gain,
+        lacunarity,
+        octaves,
         seed
       );
       self.postMessage(new Uint8Array(memory.buffer, voxels, size));

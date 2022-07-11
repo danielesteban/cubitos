@@ -3,6 +3,9 @@ import Worker from 'web-worker:./worldgen.worker.js';
 
 export default ({
   frequency = 0.01,
+  gain = 0.5,
+  lacunarity = 2,
+  octaves = 3,
   seed = Math.floor(Math.random() * 2147483647),
   volume,
 }) => (
@@ -19,6 +22,9 @@ export default ({
       height: volume.height,
       depth: volume.depth,
       frequency,
+      gain,
+      lacunarity,
+      octaves,
       seed,
     });
   }))
