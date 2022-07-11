@@ -50,6 +50,101 @@ const volume = new Volume({
 });
 ```
 
+### ChunkMaterial
+
+```js
+new ChunkMaterial({
+  // A DataArrayTexture or Texture to use as the atlas
+  atlas: new Texture(),
+  // Light === max(ambientColor, lightColor * lightLevel);
+  ambientColor: new Color(0, 0, 0),
+  lightColor: new Color(1, 1, 1),
+  // Enable/Disable lighting (default: true)
+  light: true,
+});
+```
+
+### Volume
+
+```js
+const volume = new Volume({
+  // Volume width
+  width: 128,
+  // Volume height
+  height: 128,
+   // Volume depth
+  depth: 128,
+  // An uInt8 that controls the render chunks size (default: 32)
+  chunkSize: 32,
+  // Will be called by the mesher to determine a texture from the atlas (optional)
+  mapping: (face, value, x, y, z) => (value - 1),
+  // Will be called when the volume has allocated the memory and is ready. (optional)
+  onLoad: () => {
+    // Generates terrain in a worker
+    Worldgen({
+      // Noise frequency (default: 0.01)
+      frequency: 0.006,
+      // Noise seed (default: random)
+      seed = 1337,
+      // Volume instance
+      volume,
+    })
+      .then(() => {
+        // Runs the initial light propagation
+        volume.propagate();
+      })
+  },
+  // Will be called if there's an error loading the volume. (optional)
+  onError: () => {},
+});
+
+// Returns the closest ground
+// to a position where the height fits
+const ground = volume.ground(
+  // Position
+  new Vector3(0, 0, 0),
+  // Height (default: 1)
+  4
+);
+
+// Returns a list of positions
+// to move an actor from A to B
+const pathfind = volume.ground({
+  // Starting position
+  from: new Vector3(0, 0, 0),
+  // Destination
+  to: new Vector3(0, 10, 0),
+  // Minimum height it can go through (default: 1)
+  height: 4,
+  // Maximum nodes it can visit before it bails (default: 4096)
+  maxVisited: 2048,
+  // Minimum Y it can step at (default: 0)
+  minY: 0,
+  // Maximum Y it can step at (default: Infinity)
+  maxY: Infinity,
+});
+```
+
+### World
+
+```js
+const world = new World({
+  // ChunkMaterial (or compatible material)
+  material,
+  // Volume instance
+  volume,
+});
+
+world.update(
+  // Position
+  new Vector3(0, 0, 0),
+  // Radius
+  1,
+  // Value
+  1
+);
+```
+
 ### Modifying the WASM programs
 
 To build the C code, you'll need to install LLVM:
