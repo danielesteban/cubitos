@@ -70,10 +70,11 @@ document.addEventListener('visibilitychange', () => {
     [
       "Mouse & Keyboard",
       [
+        ["Mouse", "Look"],
         ["W A S D", "Move"],
         ["Shift", "Run"],
-        ["Mouse", "Look"],
         ["Left click", "Shoot"],
+        ["Right click", "Swap atlas"],
         ["E", "Walk/Fly"],
         ["Wheel", "Set speed"],
       ],
@@ -81,9 +82,10 @@ document.addEventListener('visibilitychange', () => {
     [
       "Gamepad",
       [
-        ["Left stick", "Move (press to run)"],
         ["Right stick", "Look"],
+        ["Left stick", "Move (press to run)"],
         ["Right trigger", "Shoot"],
+        ["Left trigger", "Swap atlas"],
         ["A", "Walk/Fly"],
       ],
     ]
