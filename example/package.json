@@ -7,7 +7,7 @@
     "start": "npm run build -- -w"
   },
   "dependencies": {
-    "cubitos": "^0.0.15",
+    "cubitos": "^0.0.16",
     "three": "^0.142.0"
   },
   "devDependencies": {

@@ -247,14 +247,14 @@ static const float lighting(
   const int y,
   const int z
 ) {
-  const int vx = meshNormals[face * 9],
-            vy = meshNormals[face * 9 + 1],
-            vz = meshNormals[face * 9 + 2],
-            ux = meshNormals[face * 9 + 3],
-            uy = meshNormals[face * 9 + 4],
-            uz = meshNormals[face * 9 + 5];
-  float count = 0.0f;
+  const int vx = meshNormals[face * 9 + 3],
+            vy = meshNormals[face * 9 + 4],
+            vz = meshNormals[face * 9 + 5],
+            ux = meshNormals[face * 9 + 6],
+            uy = meshNormals[face * 9 + 7],
+            uz = meshNormals[face * 9 + 8];
   float level = 0.0f;
+  unsigned char count = 0;
   for (int s = 0; s < 5; s++) {
     const int u = meshLightSamples[s * 2],
               v = meshLightSamples[s * 2 + 1],
@@ -269,7 +269,7 @@ static const float lighting(
       count++;
     }
   }
-  return level / count / (float) maxLight;
+  return level / (float) count / (float) maxLight;
 }
 
 static const bool canGoThrough(
