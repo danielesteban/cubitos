@@ -10,7 +10,6 @@ import {
   UniformsUtils,
   Vector3,
 } from 'three';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const _voxel = new Vector3();
 
@@ -19,7 +18,6 @@ class Rain extends Mesh {
     let drop = new BoxGeometry(0.05, 0.5, 0.05);
     drop.deleteAttribute('uv');
     drop.translate(0, 0.25, 0);
-    drop = mergeVertices(drop);
     Rain.geometry = {
       index: drop.getIndex(),
       position: drop.getAttribute('position'),
