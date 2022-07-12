@@ -26,8 +26,9 @@ class Volume {
       { id: 'height', type: Uint32Array, size: width * depth },
       { id: 'light', type: Uint8Array, size: width * height * depth },
       { id: 'obstacles', type: Uint8Array, size: width * height * depth },
-      { id: 'bounds', type: Float32Array, size: 4 },
       { id: 'faces', type: Float32Array, size: Math.ceil((chunkSize ** 3) * 0.5) * 6 * 5 },
+      { id: 'box', type: Uint32Array, size: 6 },
+      { id: 'sphere', type: Float32Array, size: 4 },
       { id: 'queueA', type: Int32Array, size: width * depth },
       { id: 'queueB', type: Int32Array, size: width * depth },
       { id: 'queueC', type: Int32Array, size: width * depth },
@@ -88,7 +89,7 @@ class Volume {
       memory.volume.address,
       memory.voxels.address,
       memory.light.address,
-      memory.bounds.address,
+      memory.sphere.address,
       memory.faces.address,
       chunkSize,
       chunk.x,
@@ -96,7 +97,7 @@ class Volume {
       chunk.z
     );
     return {
-      bounds: memory.bounds.view,
+      bounds: memory.sphere.view,
       count,
       faces: new Float32Array(memory.faces.view.subarray(0, count * 5)),
     };
@@ -157,6 +158,7 @@ class Volume {
     const { memory, _update } = this;
     _update(
       memory.volume.address,
+      memory.box.address,
       memory.voxels.address,
       memory.height.address,
       memory.light.address,
@@ -169,6 +171,7 @@ class Volume {
       value,
       updateLight
     );
+    return memory.box.view;
   }
 
   voxel(position) {

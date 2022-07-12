@@ -78,8 +78,24 @@ const int voxel(
   return z * volume->width * volume->height + y * volume->width + x;
 }
 
+static void grow(
+  unsigned int* bounds,
+  const unsigned int x,
+  const unsigned int y,
+  const unsigned int z
+) {
+  if (bounds == NULL) return;
+  if (bounds[0] > x) bounds[0] = x;
+  if (bounds[1] > y) bounds[1] = y;
+  if (bounds[2] > z) bounds[2] = z;
+  if (bounds[3] < x) bounds[3] = x;
+  if (bounds[4] < y) bounds[4] = y;
+  if (bounds[5] < z) bounds[5] = z;
+}
+
 static void floodLight(
   const Volume* volume,
+  unsigned int* bounds,
   unsigned char* voxels,
   unsigned int* height,
   unsigned char* light,
@@ -117,11 +133,13 @@ static void floodLight(
       }
       light[neighbor] = nl;
       next[nextLength++] = neighbor;
+      grow(bounds, nx, ny, nz);
     }
   }
   if (nextLength > 0) {
     floodLight(
       volume,
+      bounds,
       voxels,
       height,
       light,
@@ -134,6 +152,7 @@ static void floodLight(
 
 static void removeLight(
   const Volume* volume,
+  unsigned int* bounds,
   unsigned char* voxels,
   unsigned int* height,
   unsigned char* light,
@@ -151,12 +170,10 @@ static void removeLight(
               y = floor((i % (volume->width * volume->height)) / volume->width),
               x = floor((i % (volume->width * volume->height)) % volume->width);
     for (unsigned char n = 0; n < 6; n++) {
-      const int neighbor = voxel(
-        volume,
-        x + lightNeighbors[n * 3],
-        y + lightNeighbors[n * 3 + 1],
-        z + lightNeighbors[n * 3 + 2]
-      );
+      const int nx = x + lightNeighbors[n * 3],
+                ny = y + lightNeighbors[n * 3 + 1],
+                nz = z + lightNeighbors[n * 3 + 2],
+                neighbor = voxel(volume, nx, ny, nz);
       if (neighbor == -1 || voxels[neighbor]) {
         continue;
       }
@@ -175,6 +192,7 @@ static void removeLight(
         next[nextLength++] = neighbor;
         next[nextLength++] = nl;
         light[neighbor] = 0;
+        grow(bounds, nx, ny, nz);
       } else if (nl >= level) {
         floodQueue[floodQueueSize++] = neighbor;
       }
@@ -183,6 +201,7 @@ static void removeLight(
   if (nextLength > 0) {
     removeLight(
       volume,
+      bounds,
       voxels,
       height,
       light,
@@ -195,6 +214,7 @@ static void removeLight(
   } else if (floodQueueSize > 0) {
     floodLight(
       volume,
+      bounds,
       voxels,
       height,
       light,
@@ -473,6 +493,7 @@ void propagate(
   }
   floodLight(
     volume,
+    NULL,
     voxels,
     height,
     light,
@@ -484,6 +505,7 @@ void propagate(
 
 void update(
   const Volume* volume,
+  unsigned int* bounds,
   unsigned char* voxels,
   unsigned int* height,
   unsigned char* light,
@@ -496,6 +518,10 @@ void update(
   const unsigned char value,
   const unsigned char updateLight
 ) {
+  bounds[0] = bounds[3] = x;
+  bounds[1] = bounds[4] = y;
+  bounds[2] = bounds[5] = z;
+
   const int i = voxel(volume, x, y, z);
   if (i == -1) {
     return;
@@ -533,6 +559,7 @@ void update(
       queueA[1] = level;
       removeLight(
         volume,
+        bounds,
         voxels,
         height,
         light,
@@ -560,6 +587,7 @@ void update(
     if (queueSize > 0) {
       floodLight(
         volume,
+        bounds,
         voxels,
         height,
         light,

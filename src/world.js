@@ -9,7 +9,8 @@ const _queueMicrotask = (typeof self.queueMicrotask === 'function') ? (
     .catch(e => setTimeout(() => { throw e; }));
 };
 
-const _chunk = new Vector3();
+const _max = new Vector3();
+const _min = new Vector3();
 const _voxel = new Vector3();
 
 class World extends Group {
@@ -51,7 +52,6 @@ class World extends Group {
     const updateLight = material.defines.USE_LIGHT;
     World.getBrush(radius).forEach((offset) => {
       _voxel.addVectors(point, offset);
-      _chunk.copy(_voxel).divideScalar(volume.chunkSize).floor();
       const current = volume.memory.voxels.view[volume.voxel(_voxel)];
       const update = typeof value === 'function' ? (
         value(offset.d, current, _voxel)
@@ -59,11 +59,13 @@ class World extends Group {
         value
       );
       if (update !== -1 && update !== current) {
-        volume.update(_voxel, update, updateLight);
-        for (let y = _chunk.y + 1; y >= (updateLight ? 0 : _chunk.y - 1); y--) {
-          for (let z = -1; z <= 1; z++) {
-            for (let x = -1; x <= 1; x++) {
-              this.remesh(_chunk.x + x, y, _chunk.z + z);
+        const bounds = volume.update(_voxel, update, updateLight);
+        _min.set(bounds[0] - 1, bounds[1] - 1, bounds[2] - 1).divideScalar(volume.chunkSize).floor();
+        _max.set(bounds[3] + 1, bounds[4] + 1, bounds[5] + 1).divideScalar(volume.chunkSize).floor();
+        for (let z = _min.z; z <= _max.z; z++) {
+          for (let y = _min.y; y <= _max.y; y++) {
+            for (let x = _min.x; x <= _max.x; x++) {
+              this.remesh(x, y, z);
             }
           }
         }
