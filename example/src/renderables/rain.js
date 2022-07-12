@@ -158,7 +158,6 @@ class Rain extends Mesh {
     for (let i = 0; i < numDrops; i += 1) {
       this.resetDrop(anchor, i);
     }
-    this.visible = true;
   }
 }
 

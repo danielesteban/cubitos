@@ -118,7 +118,7 @@ class Gameplay extends Scene {
             toggle.classList.toggle('enabled');
             this.rain.visible = !this.rain.visible;
             if (this.rain.visible) {
-              this.rain.reset(player.position);
+              this.rain.reset(this.player.position);
             }
           }, false);
 
