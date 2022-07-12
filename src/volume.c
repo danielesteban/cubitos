@@ -81,6 +81,7 @@ const int voxel(
 static void floodLight(
   const Volume* volume,
   unsigned char* voxels,
+  unsigned int* height,
   unsigned char* light,
   int* queue,
   const unsigned int size,
@@ -106,6 +107,11 @@ static void floodLight(
         neighbor == -1
         || light[neighbor] >= nl
         || voxels[neighbor]
+        || (
+          n != 0
+          && level == maxLight
+          && ny > height[(nz * volume->width) + nx]
+        )
       ) {
         continue;
       }
@@ -117,6 +123,7 @@ static void floodLight(
     floodLight(
       volume,
       voxels,
+      height,
       light,
       next,
       nextLength,
@@ -128,6 +135,7 @@ static void floodLight(
 static void removeLight(
   const Volume* volume,
   unsigned char* voxels,
+  unsigned int* height,
   unsigned char* light,
   int* queue,
   const unsigned int size,
@@ -176,6 +184,7 @@ static void removeLight(
     removeLight(
       volume,
       voxels,
+      height,
       light,
       next,
       nextLength,
@@ -187,6 +196,7 @@ static void removeLight(
     floodLight(
       volume,
       voxels,
+      height,
       light,
       floodQueue,
       floodQueueSize,
@@ -440,23 +450,31 @@ const int pathfind(
 void propagate(
   const Volume* volume,
   unsigned char* voxels,
+  unsigned int* height,
   unsigned char* light,
   int* queueA,
   int* queueB
 ) {
   unsigned int count = 0;
-  for (int z = 0; z < volume->depth; z++) {
-    for (int x = 0; x < volume->width; x++) {
-      const int i = voxel(volume, x, volume->height - 1, z);
-      if (!voxels[i]) {
-        light[i] = maxLight;
-        queueA[count++] = i;
+  for (int z = 0, index = 0; z < volume->depth; z++) {
+    for (int x = 0; x < volume->width; x++, index++) {
+      for (int y = volume->height - 1; y >= 0; y--) {
+        const int i = voxel(volume, x, y, z);
+        if (y == volume->height - 1 && !voxels[i]) {
+          light[i] = maxLight;
+          queueA[count++] = i;
+        }
+        if (y == 0 || voxels[i]) {
+          height[index] = y;
+          break;
+        }
       }
     }
   }
   floodLight(
     volume,
     voxels,
+    height,
     light,
     queueA,
     count,
@@ -467,6 +485,7 @@ void propagate(
 void update(
   const Volume* volume,
   unsigned char* voxels,
+  unsigned int* height,
   unsigned char* light,
   int* queueA,
   int* queueB,
@@ -491,6 +510,21 @@ void update(
     return;
   }
 
+  const int iheight = z * volume->width + x;
+  const int currentHeight = height[iheight];
+  if (!value) {
+    if (y == currentHeight) {
+      for (int h = y - 1; h >= 0; h--) {
+        if (h == 0 || voxels[voxel(volume, x, h, z)]) {
+          height[iheight] = h;
+          break;
+        }
+      }
+    }
+  } else if (currentHeight < y) {
+    height[iheight] = y;
+  }
+
   if (value && !current) {
     const unsigned char level = light[i];
     if (level != 0) {
@@ -500,6 +534,7 @@ void update(
       removeLight(
         volume,
         voxels,
+        height,
         light,
         queueA,
         2,
@@ -526,6 +561,7 @@ void update(
       floodLight(
         volume,
         voxels,
+        height,
         light,
         queueA,
         queueSize,

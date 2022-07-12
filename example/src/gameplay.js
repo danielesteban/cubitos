@@ -14,6 +14,7 @@ import Input from './core/input.js';
 import Projectiles from './core/projectiles.js';
 import SFX from './core/sfx.js';
 import Dome from './renderables/dome.js';
+import Rain from './renderables/rain.js';
 
 const _color = new Color();
 const _grid = [
@@ -49,6 +50,7 @@ class Gameplay extends Scene {
     this.player.frustum = new Frustum();
     this.player.isWalking = true;
     this.player.lastShot = 0;
+    this.player.light = 1;
     this.player.targetFloor = 0;
     this.player.targetPosition = this.player.position.clone();
     this.player.targetRotation = this.player.camera.rotation.clone();
@@ -109,6 +111,10 @@ class Gameplay extends Scene {
           this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
           this.add(this.projectiles);
 
+          this.rain = new Rain({ world: this.world });
+          this.rain.reset(this.player.position);
+          this.add(this.rain);
+
           this.world.atlasIndex = 0;
           this.loading.classList.remove('enabled');
         }),
@@ -121,7 +127,7 @@ class Gameplay extends Scene {
   }
 
   onAnimationTick(delta, time) {
-    const { actors, input, player, projectiles, sfx, world } = this;
+    const { actors, input, player, projectiles, rain, sfx, world } = this;
     if (!world) {
       return;
     }
@@ -132,7 +138,8 @@ class Gameplay extends Scene {
       actors.onAnimationTick(delta, player.frustum);
     }
     projectiles.onAnimationTick(delta);
-    sfx.onAnimationTick(player.camera);
+    rain.onAnimationTick(delta, player.position);
+    sfx.onAnimationTick(delta, player.camera, actors.light(player.position));
   }
 
   processPlayerMovement(delta) {

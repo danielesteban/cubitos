@@ -23,6 +23,7 @@ class Volume {
     const layout = [
       { id: 'volume', type: Int32Array, size: 3 },
       { id: 'voxels', type: Uint8Array, size: width * height * depth },
+      { id: 'height', type: Uint32Array, size: width * depth },
       { id: 'light', type: Uint8Array, size: width * height * depth },
       { id: 'obstacles', type: Uint8Array, size: width * height * depth },
       { id: 'bounds', type: Float32Array, size: 4 },
@@ -144,6 +145,7 @@ class Volume {
     _propagate(
       memory.volume.address,
       memory.voxels.address,
+      memory.height.address,
       memory.light.address,
       memory.queueA.address,
       memory.queueB.address
@@ -156,6 +158,7 @@ class Volume {
     _update(
       memory.volume.address,
       memory.voxels.address,
+      memory.height.address,
       memory.light.address,
       memory.queueA.address,
       memory.queueB.address,

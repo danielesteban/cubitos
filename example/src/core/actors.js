@@ -77,7 +77,9 @@ class Actors extends Group {
     _from.copy(position).divide(world.scale).floor();
     _from.y += 2;
     const voxel = world.volume.voxel(_from);
-    return voxel !== -1 ? (world.volume.memory.light.view[voxel] / 32) : 1;
+    return voxel !== -1 && !world.volume.memory.voxels.view[voxel] ? (
+      world.volume.memory.light.view[voxel] / 32
+    ) : 1;
   }
 
   spawn() {

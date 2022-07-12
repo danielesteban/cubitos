@@ -3,6 +3,7 @@ import {
   AudioListener,
   AudioLoader,
   Group,
+  MathUtils,
   PositionalAudio,
 } from 'three';
 
@@ -12,7 +13,7 @@ class SFX extends Group {
     const loader = new AudioLoader();
     this.pools = {};
     Promise.all([
-      ...['ambient', 'blast', 'shot'].map((sound) => (
+      ...['ambient', 'blast', 'shot', 'rain'].map((sound) => (
         new Promise((resolve, reject) => loader.load(`/sounds/${sound}.ogg`, resolve, null, reject))
       )),
       new Promise((resolve) => {
@@ -25,11 +26,13 @@ class SFX extends Group {
         window.addEventListener('mousedown', onFirstInteraction, false);
       }),
     ])
-      .then(([ambient, blast, shot]) => {
+      .then(([ambient, blast, shot, rain]) => {
         const listener = new AudioListener();
         document.addEventListener('visibilitychange', () => (
           listener.setMasterVolume(document.visibilityState === 'visible' ? 1 : 0)
         ), false);
+        this.listener = listener;
+
         const getPool = (buffer, pool) => (
          Array.from({ length: pool }, () => {
             const sound = new PositionalAudio(listener);
@@ -43,22 +46,44 @@ class SFX extends Group {
             return sound;
           })
         );
-        this.ambient = new Audio(listener);
-        this.ambient.setBuffer(ambient);
-        this.ambient.setLoop(true);
-        this.ambient.setVolume(0.4);
-        this.ambient.play();
-        this.listener = listener;
         this.pools.blast = getPool(blast, 16);
         this.pools.shot = getPool(shot, 16);
+
+        const filter = new BiquadFilterNode(listener.context, {
+          type: 'lowpass',
+          frequency: 1000,
+        });
+        const dry = new GainNode(listener.context, { gain: 1 });
+        const wet = new GainNode(listener.context, { gain: 0 });
+        filter.connect(listener.getInput());
+        dry.connect(listener.getInput());
+        wet.connect(filter);
+        this.filterAmbient = (delta, light) => {
+          const d = MathUtils.damp(dry.gain.value, light, 10, delta);
+          dry.gain.value = d;
+          wet.gain.value = 1 - d;
+        };
+        const getAmbient = (buffer) => {
+          const sound = new Audio(listener);
+          sound.gain.disconnect(listener.getInput());
+          sound.gain.connect(dry);
+          sound.gain.connect(wet);
+          sound.setBuffer(buffer);
+          sound.setLoop(true);
+          sound.setVolume(0.4);
+          sound.play();
+        };
+        this.ambient = getAmbient(ambient);
+        this.rain = getAmbient(rain);
       });
   }
 
-  onAnimationTick(camera) {
+  onAnimationTick(delta, camera, light) {
     const { listener } = this;
     if (!listener) {
       return;
     }
+    this.filterAmbient(delta, light);
     camera.matrixWorld.decompose(listener.position, listener.quaternion, listener.scale);
     listener.updateMatrixWorld();
   }
