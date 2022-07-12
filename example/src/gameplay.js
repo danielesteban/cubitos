@@ -112,8 +112,15 @@ class Gameplay extends Scene {
           this.add(this.projectiles);
 
           this.rain = new Rain({ world: this.world });
-          this.rain.reset(this.player.position);
           this.add(this.rain);
+          const toggle = document.getElementById('rain');
+          toggle.addEventListener('click', () => {
+            toggle.classList.toggle('enabled');
+            this.rain.visible = !this.rain.visible;
+            if (this.rain.visible) {
+              this.rain.reset(player.position);
+            }
+          }, false);
 
           this.world.atlasIndex = 0;
           this.loading.classList.remove('enabled');
@@ -139,7 +146,7 @@ class Gameplay extends Scene {
     }
     projectiles.onAnimationTick(delta);
     rain.onAnimationTick(delta, player.position);
-    sfx.onAnimationTick(delta, player.camera, actors.light(player.position));
+    sfx.onAnimationTick(delta, player.camera, actors.light(player.position), rain.visible);
   }
 
   processPlayerMovement(delta) {

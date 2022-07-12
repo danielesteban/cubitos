@@ -4,8 +4,8 @@
 
 body {
   margin: 0;
-  background: #fff;
-  color: #333;
+  background: #000;
+  color: #fff;
   cursor: default;
   user-select: none;
   overflow: hidden;
@@ -33,7 +33,9 @@ canvas {
   bottom: 1rem;
   right: 1rem;
   text-align: right;
-  opacity: 0.5;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0, 0, 0, .5);
+  opacity: 0.8;
 }
 
 #info a {
@@ -54,6 +56,25 @@ canvas {
 
 #loading.enabled {
   display: block;
+}
+
+#rain {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  opacity: 0.8;
+  border-radius: 16px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, .5);
+  padding: 0.5rem 1rem;
+  width: 24px;
+  height: 24px;
+  background-color: #000;
+  cursor: pointer;
+  transition: background-color ease-out .3s;
+}
+
+#rain.enabled {
+  background-color: #55a;
 }
 
 #renderer {
@@ -112,7 +133,7 @@ canvas {
   border-color: rgba(255, 255, 255, 0.7);
 }
 
-body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #ribbon {
+body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #rain, body.pointerlock #ribbon {
   display: none;
 }
 

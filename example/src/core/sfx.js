@@ -71,19 +71,25 @@ class SFX extends Group {
           sound.setBuffer(buffer);
           sound.setLoop(true);
           sound.setVolume(0.4);
-          sound.play();
+          return sound;
         };
         this.ambient = getAmbient(ambient);
-        this.rain = getAmbient(rain);
+        this.ambient.play();
+        this.rain = getAmbient(rain, 0);
       });
   }
 
-  onAnimationTick(delta, camera, light) {
-    const { listener } = this;
+  onAnimationTick(delta, camera, light, isRaining) {
+    const { listener, rain } = this;
     if (!listener) {
       return;
     }
     this.filterAmbient(delta, light);
+    if (isRaining && !rain.isPlaying) {
+      rain.play();
+    } else if (!isRaining && rain.isPlaying) {
+      rain.pause();
+    }
     camera.matrixWorld.decompose(listener.position, listener.quaternion, listener.scale);
     listener.updateMatrixWorld();
   }
