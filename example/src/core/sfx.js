@@ -59,9 +59,9 @@ class SFX extends Group {
         dry.connect(listener.getInput());
         wet.connect(filter);
         this.filterAmbient = (delta, light) => {
-          const d = MathUtils.damp(dry.gain.value, light, 10, delta);
-          dry.gain.value = d;
-          wet.gain.value = 1 - d;
+          const d = MathUtils.damp(wet.gain.value, (1 - light) * 0.8, 10, delta);
+          wet.gain.value = d;
+          dry.gain.value = 1 - d;
         };
         const getAmbient = (buffer) => {
           const sound = new Audio(listener);
