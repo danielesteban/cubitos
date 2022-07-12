@@ -265,11 +265,11 @@ static const float lighting(
                 z + uz * u + vz * v
               );
     if (n != -1 && !voxels[n]) {
-      level += (float) light[n];
+      level += light[n];
       count++;
     }
   }
-  return level / (float) count / (float) maxLight;
+  return level / count / maxLight;
 }
 
 static const bool canGoThrough(
