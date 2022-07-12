@@ -103,7 +103,6 @@ class PostProcessing {
           '  float sobelNormal = sobelNormalVec.x + sobelNormalVec.y + sobelNormalVec.z;',
           '  sobelNormal = pow(sobelNormal * normalScale, normalBias);',
           '  vec3 color = texture(colorTexture, uv).rgb;',
-          '  float depth = LinearizeDepth(texture(depthTexture, uv).r);',
           '  return mix(color, vec3(0.0), saturate(max(sobelDepth, sobelNormal)) * intensity);',
           '}',
           'void main() {',
