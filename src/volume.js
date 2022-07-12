@@ -89,8 +89,8 @@ class Volume {
       memory.volume.address,
       memory.voxels.address,
       memory.light.address,
-      memory.sphere.address,
       memory.faces.address,
+      memory.sphere.address,
       chunkSize,
       chunk.x,
       chunk.y,
@@ -157,8 +157,8 @@ class Volume {
   update(position, value, updateLight = true) {
     const { memory, _update } = this;
     _update(
-      memory.volume.address,
       memory.box.address,
+      memory.volume.address,
       memory.voxels.address,
       memory.height.address,
       memory.light.address,

@@ -2,6 +2,19 @@
 #include "../vendor/AStar/AStar.c"
 
 typedef struct {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+  } min;
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+  } max;
+} Box;
+
+typedef struct {
   const int width;
   const int height;
   const int depth;
@@ -79,23 +92,23 @@ const int voxel(
 }
 
 static void grow(
-  unsigned int* bounds,
+  Box* box,
   const unsigned int x,
   const unsigned int y,
   const unsigned int z
 ) {
-  if (bounds == NULL) return;
-  if (bounds[0] > x) bounds[0] = x;
-  if (bounds[1] > y) bounds[1] = y;
-  if (bounds[2] > z) bounds[2] = z;
-  if (bounds[3] < x) bounds[3] = x;
-  if (bounds[4] < y) bounds[4] = y;
-  if (bounds[5] < z) bounds[5] = z;
+  if (box == NULL) return;
+  if (box->min.x > x) box->min.x = x;
+  if (box->min.y > y) box->min.y = y;
+  if (box->min.z > z) box->min.z = z;
+  if (box->max.x < x) box->max.x = x;
+  if (box->max.y < y) box->max.y = y;
+  if (box->max.z < z) box->max.z = z;
 }
 
 static void floodLight(
+  Box* bounds,
   const Volume* volume,
-  unsigned int* bounds,
   unsigned char* voxels,
   unsigned int* height,
   unsigned char* light,
@@ -138,8 +151,8 @@ static void floodLight(
   }
   if (nextLength > 0) {
     floodLight(
-      volume,
       bounds,
+      volume,
       voxels,
       height,
       light,
@@ -151,8 +164,8 @@ static void floodLight(
 }
 
 static void removeLight(
+  Box* bounds,
   const Volume* volume,
-  unsigned int* bounds,
   unsigned char* voxels,
   unsigned int* height,
   unsigned char* light,
@@ -200,8 +213,8 @@ static void removeLight(
   }
   if (nextLength > 0) {
     removeLight(
-      volume,
       bounds,
+      volume,
       voxels,
       height,
       light,
@@ -213,8 +226,8 @@ static void removeLight(
     );
   } else if (floodQueueSize > 0) {
     floodLight(
-      volume,
       bounds,
+      volume,
       voxels,
       height,
       light,
@@ -363,8 +376,8 @@ int mesh(
   const Volume* volume,
   const unsigned char* voxels,
   const unsigned char* light,
-  float* bounds,
   float* faces,
+  float* sphere,
   const char chunkSize,
   const int chunkX,
   const int chunkY,
@@ -413,10 +426,10 @@ int mesh(
   const float halfWidth = 0.5f * (box[3] - box[0]),
               halfHeight = 0.5f * (box[4] - box[1]),
               halfDepth = 0.5f * (box[5] - box[2]);
-  bounds[0] = 0.5f * (box[0] + box[3]);
-  bounds[1] = 0.5f * (box[1] + box[4]);
-  bounds[2] = 0.5f * (box[2] + box[5]);
-  bounds[3] = sqrt(
+  sphere[0] = 0.5f * (box[0] + box[3]);
+  sphere[1] = 0.5f * (box[1] + box[4]);
+  sphere[2] = 0.5f * (box[2] + box[5]);
+  sphere[3] = sqrt(
     halfWidth * halfWidth
     + halfHeight * halfHeight
     + halfDepth * halfDepth
@@ -492,8 +505,8 @@ void propagate(
     }
   }
   floodLight(
-    volume,
     NULL,
+    volume,
     voxels,
     height,
     light,
@@ -504,8 +517,8 @@ void propagate(
 }
 
 void update(
+  Box* bounds,
   const Volume* volume,
-  unsigned int* bounds,
   unsigned char* voxels,
   unsigned int* height,
   unsigned char* light,
@@ -518,9 +531,9 @@ void update(
   const unsigned char value,
   const unsigned char updateLight
 ) {
-  bounds[0] = bounds[3] = x;
-  bounds[1] = bounds[4] = y;
-  bounds[2] = bounds[5] = z;
+  bounds->min.x = bounds->max.x = x;
+  bounds->min.y = bounds->max.y = y;
+  bounds->min.z = bounds->max.z = z;
 
   const int i = voxel(volume, x, y, z);
   if (i == -1) {
@@ -558,8 +571,8 @@ void update(
       queueA[0] = i;
       queueA[1] = level;
       removeLight(
-        volume,
         bounds,
+        volume,
         voxels,
         height,
         light,
@@ -586,8 +599,8 @@ void update(
     }
     if (queueSize > 0) {
       floodLight(
-        volume,
         bounds,
+        volume,
         voxels,
         height,
         light,
