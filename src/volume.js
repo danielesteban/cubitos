@@ -23,11 +23,11 @@ class Volume {
     const layout = [
       { id: 'volume', type: Int32Array, size: 3 },
       { id: 'voxels', type: Uint8Array, size: width * height * depth },
-      { id: 'height', type: Uint32Array, size: width * depth },
+      { id: 'height', type: Int32Array, size: width * depth },
       { id: 'light', type: Uint8Array, size: width * height * depth },
       { id: 'obstacles', type: Uint8Array, size: width * height * depth },
       { id: 'faces', type: Float32Array, size: Math.ceil((chunkSize ** 3) * 0.5) * 6 * 5 },
-      { id: 'box', type: Uint32Array, size: 6 },
+      { id: 'box', type: Int32Array, size: 6 },
       { id: 'sphere', type: Float32Array, size: 4 },
       { id: 'queueA', type: Int32Array, size: width * depth },
       { id: 'queueB', type: Int32Array, size: width * depth },

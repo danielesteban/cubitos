@@ -3,14 +3,14 @@
 
 typedef struct {
   struct {
-    unsigned int x;
-    unsigned int y;
-    unsigned int z;
+    int x;
+    int y;
+    int z;
   } min;
   struct {
-    unsigned int x;
-    unsigned int y;
-    unsigned int z;
+    int x;
+    int y;
+    int z;
   } max;
 } Box;
 
@@ -93,9 +93,9 @@ const int voxel(
 
 static void grow(
   Box* box,
-  const unsigned int x,
-  const unsigned int y,
-  const unsigned int z
+  const int x,
+  const int y,
+  const int z
 ) {
   if (box == NULL) return;
   if (box->min.x > x) box->min.x = x;
@@ -110,7 +110,7 @@ static void floodLight(
   Box* bounds,
   const Volume* volume,
   unsigned char* voxels,
-  unsigned int* height,
+  int* height,
   unsigned char* light,
   int* queue,
   const unsigned int size,
@@ -167,7 +167,7 @@ static void removeLight(
   Box* bounds,
   const Volume* volume,
   unsigned char* voxels,
-  unsigned int* height,
+  int* height,
   unsigned char* light,
   int* queue,
   const unsigned int size,
@@ -483,7 +483,7 @@ const int pathfind(
 void propagate(
   const Volume* volume,
   unsigned char* voxels,
-  unsigned int* height,
+  int* height,
   unsigned char* light,
   int* queueA,
   int* queueB
@@ -520,7 +520,7 @@ void update(
   Box* bounds,
   const Volume* volume,
   unsigned char* voxels,
-  unsigned int* height,
+  int* height,
   unsigned char* light,
   int* queueA,
   int* queueB,
