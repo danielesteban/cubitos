@@ -113,6 +113,7 @@ class Dome extends Mesh {
       Dome.material
     );
     this.frustumCulled = false;
+    this.matrixAutoUpdate = false;
     this.renderOrder = 1;
   }
 }

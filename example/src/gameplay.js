@@ -96,6 +96,11 @@ class Gameplay extends Scene {
           this.world.updateMatrix();
           this.add(this.world);
 
+          this.dome.position
+            .set(volume.width * 0.5, 0, volume.depth * 0.5)
+            .multiply(this.world.scale);
+          this.dome.updateMatrix();
+
           this.player.position.set(
             Math.floor(volume.width * 0.5),
             volume.height - 1,
