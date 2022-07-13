@@ -131,7 +131,7 @@ static void floodLight(
         || (
           n != 0
           && level == maxLight
-          && ny > height[(nz * volume->width) + nx]
+          && ny > height[nz * volume->width + nx]
         )
       ) {
         continue;
@@ -216,7 +216,9 @@ static void removeLight(
       floodQueue,
       floodQueueSize
     );
-  } else if (floodQueueSize > 0) {
+    return;
+  }
+  if (floodQueueSize > 0) {
     floodLight(
       bounds,
       volume,
@@ -543,19 +545,18 @@ void update(
     return;
   }
 
-  const int iheight = z * volume->width + x;
-  const int currentHeight = height[iheight];
-  if (!value) {
-    if (y == currentHeight) {
-      for (int h = y - 1; h >= 0; h--) {
-        if (h == 0 || voxels[voxel(volume, x, h, z)]) {
-          height[iheight] = h;
-          break;
-        }
+  const int heightIndex = z * volume->width + x;
+  const int currentHeight = height[heightIndex];
+  if (value && currentHeight < y) {
+    height[heightIndex] = y;
+  }
+  if (!value && currentHeight == y) {
+    for (int h = y - 1; h >= 0; h--) {
+      if (h == 0 || voxels[voxel(volume, x, h, z)]) {
+        height[heightIndex] = h;
+        break;
       }
     }
-  } else if (currentHeight < y) {
-    height[iheight] = y;
   }
 
   if (value && !current) {
