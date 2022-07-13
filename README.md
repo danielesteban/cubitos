@@ -74,9 +74,9 @@ const volume = new Volume({
   width: 128,
   // Volume height
   height: 128,
-   // Volume depth
+  // Volume depth
   depth: 128,
-  // An uInt8 that controls the render chunks size (default: 32)
+  // Render chunks size (default: 32)
   chunkSize: 32,
   // Will be called by the mesher to determine a texture from the atlas (optional)
   mapping: (face, value, x, y, z) => (value - 1),

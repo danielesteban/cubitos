@@ -2,16 +2,14 @@
 #include "../vendor/AStar/AStar.c"
 
 typedef struct {
-  struct {
-    int x;
-    int y;
-    int z;
-  } min;
-  struct {
-    int x;
-    int y;
-    int z;
-  } max;
+  int x;
+  int y;
+  int z;
+} PathNode;
+
+typedef struct {
+  PathNode min;
+  PathNode max;
 } Box;
 
 typedef struct {
@@ -19,12 +17,6 @@ typedef struct {
   const int height;
   const int depth;
 } Volume;
-
-typedef struct {
-  int x;
-  int y;
-  int z;
-} PathNode;
 
 typedef struct {
   const Volume* volume;
@@ -378,14 +370,16 @@ int mesh(
   const unsigned char* light,
   float* faces,
   float* sphere,
-  const char chunkSize,
+  Box* box,
+  const int chunkSize,
   const int chunkX,
   const int chunkY,
   const int chunkZ
 ) {
+  box->min.x = box->min.y = box->min.z = chunkSize;
+  box->max.x = box->max.y = box->max.z = 0;
   int count = 0;
   int offset = 0;
-  unsigned char box[6] = { chunkSize, chunkSize, chunkSize, 0, 0, 0 };
   for (int z = chunkZ; z < chunkZ + chunkSize; z++) {
     for (int y = chunkY; y < chunkY + chunkSize; y++) {
       for (int x = chunkX; x < chunkX + chunkSize; x++) {
@@ -412,23 +406,23 @@ int mesh(
             }
           }
           if (isVisible) {
-            if (box[0] > cx) box[0] = cx;
-            if (box[1] > cy) box[1] = cy;
-            if (box[2] > cz) box[2] = cz;
-            if (box[3] < cx + 1) box[3] = cx + 1;
-            if (box[4] < cy + 1) box[4] = cy + 1;
-            if (box[5] < cz + 1) box[5] = cz + 1;
+            if (box->min.x > cx) box->min.x = cx;
+            if (box->min.y > cy) box->min.y = cy;
+            if (box->min.z > cz) box->min.z = cz;
+            if (box->max.x < cx + 1) box->max.x = cx + 1;
+            if (box->max.y < cy + 1) box->max.y = cy + 1;
+            if (box->max.z < cz + 1) box->max.z = cz + 1;
           }
         }
       }
     }
   }
-  const float halfWidth = 0.5f * (box[3] - box[0]),
-              halfHeight = 0.5f * (box[4] - box[1]),
-              halfDepth = 0.5f * (box[5] - box[2]);
-  sphere[0] = 0.5f * (box[0] + box[3]);
-  sphere[1] = 0.5f * (box[1] + box[4]);
-  sphere[2] = 0.5f * (box[2] + box[5]);
+  const float halfWidth = 0.5f * (box->max.x - box->min.x),
+              halfHeight = 0.5f * (box->max.y - box->min.y),
+              halfDepth = 0.5f * (box->max.z - box->min.z);
+  sphere[0] = 0.5f * (box->min.x + box->max.x);
+  sphere[1] = 0.5f * (box->min.y + box->max.y);
+  sphere[2] = 0.5f * (box->min.z + box->max.z);
   sphere[3] = sqrt(
     halfWidth * halfWidth
     + halfHeight * halfHeight
