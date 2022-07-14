@@ -8,6 +8,7 @@ import {
   ShaderMaterial,
   ShaderLib,
   UniformsUtils,
+  Vector4,
 } from 'three';
 
 const _box = new Box3();
@@ -19,15 +20,25 @@ class Actor extends Group {
     Actor.material = new ShaderMaterial({
       uniforms: {
         ...UniformsUtils.clone(uniforms),
+        light: { value: new Vector4(1, 0, 0, 0) },
         ambientColor: { value: new Color(0, 0, 0) },
-        lightColor: { value: new Color(1, 1, 1) },
-        light: { value: 1 },
+        light1Color: { value: new Color(1, 1, 1) },
+        light2Color: { value: new Color(1, 1, 1) },
+        light3Color: { value: new Color(1, 1, 1) },
+        sunlightColor: { value: new Color(1, 1, 1) },
       },
       vertexShader: vertexShader
         .replace(
           '#include <common>',
           [
             '#include <common>',
+            'uniform vec4 light;',
+            'uniform vec3 ambientColor;',
+            'uniform vec3 light1Color;',
+            'uniform vec3 light2Color;',
+            'uniform vec3 light3Color;',
+            'uniform vec3 sunlightColor;',
+            'varying vec3 fragLight;',
             'varying vec3 fragNormal;',
           ].join('\n')
         )
@@ -39,6 +50,8 @@ class Actor extends Group {
           '#include <begin_vertex>',
           [
             '#include <begin_vertex>',
+            'vec3 lightColor = sunlightColor * light.x + light1Color * light.y + light2Color * light.z + light3Color * light.w;',
+            'fragLight = max(ambientColor, lightColor);',
             'fragNormal = transformedNormal;',
           ].join('\n')
         ),
@@ -48,17 +61,15 @@ class Actor extends Group {
           [
             '#include <common>',
             'layout(location = 1) out vec4 pc_fragNormal;',
+            'varying vec3 fragLight;',
             'varying vec3 fragNormal;',
-            'uniform vec3 ambientColor;',
-            'uniform vec3 lightColor;',
-            'uniform float light;',
           ].join('\n')
         )
         .replace(
           '#include <map_fragment>',
           [
             '#include <map_fragment>',
-            'diffuseColor.rgb *= max(ambientColor, lightColor * light);',
+            'diffuseColor.rgb *= fragLight;',
           ].join('\n'),
         )
         .replace(
@@ -97,8 +108,8 @@ class Actor extends Group {
     this.colors = colors;
     this.light = {
       get: light,
-      target: 1,
-      value: 1,
+      target: new Vector4(),
+      value: new Vector4(),
     };
     this.rotation.set(0, 0, 0, 'YXZ');
     this.targetRotation = 0;
@@ -110,7 +121,7 @@ class Actor extends Group {
         child.onBeforeRender = () => {
           const { colors, light } = this;
           child.material.uniforms.diffuse.value.copy(colors[material]);
-          child.material.uniforms.light.value = light.value;
+          child.material.uniforms.light.value.copy(light.value);
           child.material.uniformsNeedUpdate = true;
         };
         child.frustumCulled = false;
@@ -141,9 +152,11 @@ class Actor extends Group {
         this.setAction(actions.idle);
       }
     }
-    if (Math.abs(light.target - light.value) > 0.01) {
-      light.value = MathUtils.damp(light.value, light.target, walkingSpeed * 1.5, delta);
-    }
+    ['x', 'y', 'z', 'w'].forEach((l) => {
+      if (Math.abs(light.target[l] - light.value[l]) > 0.01) {
+        light.value[l] = MathUtils.damp(light.value[l], light.target[l], walkingSpeed * 1.5, delta);
+      }
+    });
     if (Math.abs(targetRotation - rotation.y) > 0.01) {
       rotation.y = MathUtils.damp(rotation.y, targetRotation, walkingSpeed * 1.5, delta);
     }
@@ -235,7 +248,7 @@ class Actor extends Group {
 
   setLight(position) {
     const { light } = this;
-    light.target = light.get(position);
+    light.get(position, light.target);
   }
 
   setPath(results, scale, onDestination) {

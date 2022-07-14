@@ -50,9 +50,9 @@ class Chunk extends Mesh {
     }
     geometry.boundingSphere.center.set(bounds[0], bounds[1], bounds[2]);
     geometry.boundingSphere.radius = bounds[3];
-    const buffer = new InstancedInterleavedBuffer(faces, 5, 1);
+    const buffer = new InstancedInterleavedBuffer(faces, 8, 1);
     geometry.setAttribute('face', new InterleavedBufferAttribute(buffer, 4, 0));
-    geometry.setAttribute('light', new InterleavedBufferAttribute(buffer, 1, 4));
+    geometry.setAttribute('light', new InterleavedBufferAttribute(buffer, 4, 4));
     geometry.instanceCount = geometry._maxInstanceCount = count;
     this.visible = true;
   }

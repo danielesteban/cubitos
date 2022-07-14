@@ -5,17 +5,19 @@ typedef struct {
   int x;
   int y;
   int z;
-} PathNode;
+} Voxel;
 
 typedef struct {
-  PathNode min;
-  PathNode max;
+  Voxel min;
+  Voxel max;
 } Box;
 
 typedef struct {
   const int width;
   const int height;
   const int depth;
+  const int chunkSize;
+  const int maxLight;
 } Volume;
 
 typedef struct {
@@ -28,24 +30,32 @@ typedef struct {
   const int maxY;
 } PathContext;
 
-static const unsigned char maxLight = 32;
-
-static const int lightNeighbors[] = {
-  0, -1, 0,
-  0, 1, 0,
-  -1, 0, 0,
-  1, 0, 0,
-  0, 0, -1,
-  0, 0, 1
+enum LightChannels {
+  LIGHT_CHANNEL_SUNLIGHT,
+  LIGHT_CHANNEL_LIGHT1,
+  LIGHT_CHANNEL_LIGHT2,
+  LIGHT_CHANNEL_LIGHT3,
+  LIGHT_CHANNELS
 };
 
-static const int meshNormals[] = {
-  0, 0, 1,    0, 1, 0,    1, 0, 0,
-  0, 1, 0,    0, 0, -1,   1, 0, 0,
-  0, -1, 0,   0, 0, 1,    1, 0, 0,
-  -1, 0, 0,   0, 1, 0,    0, 0, 1,
-  1, 0, 0,    0, 1, 0,    0, 0, 1,
-  0, 0, -1,   0, 1, 0,    -1, 0, 0
+typedef unsigned char Light[LIGHT_CHANNELS];
+
+static const Voxel lightNeighbors[6] = {
+  { 0, -1, 0 },
+  { 0, 1, 0 },
+  { -1, 0, 0 },
+  { 1, 0, 0 },
+  { 0, 0, -1 },
+  { 0, 0, 1 }
+};
+
+static const Voxel meshNormals[6][3] = {
+  { { 0, 0, 1 },    { 0, 1, 0 },    { 1, 0, 0 }, },
+  { { 0, 1, 0 },    { 0, 0, -1 },   { 1, 0, 0 }, },
+  { { 0, -1, 0 },   { 0, 0, 1 },    { 1, 0, 0 }, },
+  { { -1, 0, 0 },   { 0, 1, 0 },    { 0, 0, 1 }, },
+  { { 1, 0, 0 },    { 0, 1, 0 },    { 0, 0, 1 }, },
+  { { 0, 0, -1 },   { 0, 1, 0 },    { -1, 0, 0 } },
 };
 
 static const int meshLightSamples[] = {
@@ -64,7 +74,9 @@ static const int horizontalNeighbors[] = {
 };
 
 static const int verticalNeighbors[] = {
-  0, 1, -1
+  0,
+  1,
+  -1
 };
 
 const int voxel(
@@ -100,10 +112,11 @@ static void grow(
 
 static void floodLight(
   Box* bounds,
+  const unsigned char channel,
   const Volume* volume,
   unsigned char* voxels,
   int* height,
-  unsigned char* light,
+  Light* light,
   int* queue,
   const unsigned int size,
   int* next
@@ -111,7 +124,7 @@ static void floodLight(
   unsigned int nextLength = 0;
   for (unsigned int q = 0; q < size; q++) {
     const int i = queue[q];
-    const unsigned char level = light[i];
+    const unsigned char level = light[i][channel];
     if (level == 0) {
       continue;
     }
@@ -119,24 +132,27 @@ static void floodLight(
               y = floor((i % (volume->width * volume->height)) / volume->width),
               x = floor((i % (volume->width * volume->height)) % volume->width);
     for (unsigned char n = 0; n < 6; n++) {
-      const int nx = x + lightNeighbors[n * 3],
-                ny = y + lightNeighbors[n * 3 + 1],
-                nz = z + lightNeighbors[n * 3 + 2],
+      const int nx = x + lightNeighbors[n].x,
+                ny = y + lightNeighbors[n].y,
+                nz = z + lightNeighbors[n].z,
                 neighbor = voxel(volume, nx, ny, nz);
-      const unsigned char nl = level - (n == 0 && level == maxLight ? 0 : 1);
+      const unsigned char nl = level - (
+        channel == LIGHT_CHANNEL_SUNLIGHT && n == 0 && level == volume->maxLight ? 0 : 1
+      );
       if (
         neighbor == -1
-        || light[neighbor] >= nl
+        || light[neighbor][channel] >= nl
         || voxels[neighbor]
         || (
-          n != 0
-          && level == maxLight
+          channel == LIGHT_CHANNEL_SUNLIGHT
+          && n != 0
+          && level == volume->maxLight
           && ny > height[nz * volume->width + nx]
         )
       ) {
         continue;
       }
-      light[neighbor] = nl;
+      light[neighbor][channel] = nl;
       next[nextLength++] = neighbor;
       grow(bounds, nx, ny, nz);
     }
@@ -144,6 +160,7 @@ static void floodLight(
   if (nextLength > 0) {
     floodLight(
       bounds,
+      channel,
       volume,
       voxels,
       height,
@@ -157,10 +174,11 @@ static void floodLight(
 
 static void removeLight(
   Box* bounds,
+  const unsigned char channel,
   const Volume* volume,
   unsigned char* voxels,
   int* height,
-  unsigned char* light,
+  Light* light,
   int* queue,
   const unsigned int size,
   int* next,
@@ -175,28 +193,29 @@ static void removeLight(
               y = floor((i % (volume->width * volume->height)) / volume->width),
               x = floor((i % (volume->width * volume->height)) % volume->width);
     for (unsigned char n = 0; n < 6; n++) {
-      const int nx = x + lightNeighbors[n * 3],
-                ny = y + lightNeighbors[n * 3 + 1],
-                nz = z + lightNeighbors[n * 3 + 2],
+      const int nx = x + lightNeighbors[n].x,
+                ny = y + lightNeighbors[n].y,
+                nz = z + lightNeighbors[n].z,
                 neighbor = voxel(volume, nx, ny, nz);
       if (neighbor == -1 || voxels[neighbor]) {
         continue;
       }
-      const unsigned char nl = light[neighbor];
+      const unsigned char nl = light[neighbor][channel];
       if (nl == 0) {
         continue;
       }
       if (
         nl < level
         || (
-          n == 0
-          && level == maxLight
-          && nl == maxLight
+          channel == LIGHT_CHANNEL_SUNLIGHT
+          && n == 0
+          && level == volume->maxLight
+          && nl == volume->maxLight
         )
       ) {
         next[nextLength++] = neighbor;
         next[nextLength++] = nl;
-        light[neighbor] = 0;
+        light[neighbor][channel] = 0;
         grow(bounds, nx, ny, nz);
       } else if (nl >= level) {
         floodQueue[floodQueueSize++] = neighbor;
@@ -206,6 +225,7 @@ static void removeLight(
   if (nextLength > 0) {
     removeLight(
       bounds,
+      channel,
       volume,
       voxels,
       height,
@@ -221,6 +241,7 @@ static void removeLight(
   if (floodQueueSize > 0) {
     floodLight(
       bounds,
+      channel,
       volume,
       voxels,
       height,
@@ -235,18 +256,19 @@ static void removeLight(
 static const float lighting(
   const Volume* volume,
   const unsigned char* voxels,
-  const unsigned char* light,
+  const Light* light,
   const unsigned char face,
+  const unsigned char channel,
   const int x,
   const int y,
   const int z
 ) {
-  const int vx = meshNormals[face * 9 + 3],
-            vy = meshNormals[face * 9 + 4],
-            vz = meshNormals[face * 9 + 5],
-            ux = meshNormals[face * 9 + 6],
-            uy = meshNormals[face * 9 + 7],
-            uz = meshNormals[face * 9 + 8];
+  const int vx = meshNormals[face][1].x,
+            vy = meshNormals[face][1].y,
+            vz = meshNormals[face][1].z,
+            ux = meshNormals[face][2].x,
+            uy = meshNormals[face][2].y,
+            uz = meshNormals[face][2].z;
   float level = 0.0f;
   unsigned char count = 0;
   for (int s = 0; s < 5; s++) {
@@ -258,12 +280,12 @@ static const float lighting(
                 y + uy * u + vy * v,
                 z + uz * u + vz * v
               );
-    if (n != -1 && !voxels[n]) {
-      level += light[n];
+    if (s == 0 || (n != -1 && !voxels[n] && light[n][channel])) {
+      level += light[n][channel];
       count++;
     }
   }
-  return level / count / maxLight;
+  return level / count / volume->maxLight;
 }
 
 static const bool canGoThrough(
@@ -298,7 +320,7 @@ static const bool canStepAt(
 }
 
 static void PathNodeNeighbors(ASNeighborList neighbors, void* pathNode, void* pathContext) {
-  PathNode* node = (PathNode*) pathNode;
+  Voxel* node = (Voxel*) pathNode;
   PathContext* context = (PathContext*) pathContext;
   for (int i = 0; i < 8; i += 2) {
     const int x = horizontalNeighbors[i];
@@ -306,15 +328,15 @@ static void PathNodeNeighbors(ASNeighborList neighbors, void* pathNode, void* pa
     for (int j = 0; j < 3; j++) {
       const int y = verticalNeighbors[j];
       if (canStepAt(context, node->x + x, node->y + y, node->z + z)) {
-        ASNeighborListAdd(neighbors, &(PathNode){node->x + x, node->y + y, node->z + z}, j > 0 ? 2 : 1);
+        ASNeighborListAdd(neighbors, &(Voxel){node->x + x, node->y + y, node->z + z}, j > 0 ? 2 : 1);
       }
     }
   }
 }
 
 static float PathNodeHeuristic(void* fromNode, void* toNode, void* context) {
-  PathNode* from = (PathNode*) fromNode;
-  PathNode* to = (PathNode*) toNode;
+  Voxel* from = (Voxel*) fromNode;
+  Voxel* to = (Voxel*) toNode;
   return abs(from->x - to->x) + abs(from->y - to->y) + abs(from->z - to->z);
 }
 
@@ -326,7 +348,7 @@ static int EarlyExit(size_t visitedCount, void* visitingNode, void* goalNode, vo
 }
 
 static const ASPathNodeSource PathNodeSource = {
-  sizeof(PathNode),
+  sizeof(Voxel),
   &PathNodeNeighbors,
   &PathNodeHeuristic,
   &EarlyExit,
@@ -369,22 +391,21 @@ int mapping(int face, int value, int x, int y, int z);
 int mesh(
   const Volume* volume,
   const unsigned char* voxels,
-  const unsigned char* light,
+  const Light* light,
   float* faces,
   float* sphere,
   Box* box,
-  const int chunkSize,
   const int chunkX,
   const int chunkY,
   const int chunkZ
 ) {
-  box->min.x = box->min.y = box->min.z = chunkSize;
+  box->min.x = box->min.y = box->min.z = volume->chunkSize;
   box->max.x = box->max.y = box->max.z = 0;
   int count = 0;
   int offset = 0;
-  for (int z = chunkZ; z < chunkZ + chunkSize; z++) {
-    for (int y = chunkY; y < chunkY + chunkSize; y++) {
-      for (int x = chunkX; x < chunkX + chunkSize; x++) {
+  for (int z = chunkZ; z < chunkZ + volume->chunkSize; z++) {
+    for (int y = chunkY; y < chunkY + volume->chunkSize; y++) {
+      for (int x = chunkX; x < chunkX + volume->chunkSize; x++) {
         const unsigned char value = voxels[voxel(volume, x, y, z)];
         if (value) {
           const int cx = x - chunkX,
@@ -392,9 +413,9 @@ int mesh(
                     cz = z - chunkZ;
           bool isVisible = false;
           for (unsigned char face = 0; face < 6; face++) {
-            const int nx = x + meshNormals[face * 9],
-                      ny = y + meshNormals[face * 9 + 1],
-                      nz = z + meshNormals[face * 9 + 2],
+            const int nx = x + meshNormals[face][0].x,
+                      ny = y + meshNormals[face][0].y,
+                      nz = z + meshNormals[face][0].z,
                       neighbor = voxel(volume, nx, ny, nz);
             if (neighbor != -1 && !voxels[neighbor]) {
               isVisible = true;
@@ -403,7 +424,9 @@ int mesh(
               faces[offset++] = cy + 0.5f;
               faces[offset++] = cz + 0.5f;
               faces[offset++] = texture * 6.0f + (float) face;
-              faces[offset++] = lighting(volume, voxels, light, face, nx, ny, nz);
+              for (int channel = 0; channel < LIGHT_CHANNELS; channel++) {
+                faces[offset++] = lighting(volume, voxels, light, face, channel, nx, ny, nz);
+              }
               count++;
             }
           }
@@ -462,12 +485,12 @@ const int pathfind(
   ASPath path = ASPathCreate(
     &PathNodeSource,
     &(PathContext){volume, voxels, obstacles, height, maxVisited, minY, maxY},
-    &(PathNode){fromX, fromY, fromZ},
-    &(PathNode){toX, toY, toZ}
+    &(Voxel){fromX, fromY, fromZ},
+    &(Voxel){toX, toY, toZ}
   );
   const int nodes = ASPathGetCount(path);
   for (int i = 0, p = 0; i < nodes; i++, p += 3) {
-    PathNode* node = ASPathGetNode(path, i);
+    Voxel* node = ASPathGetNode(path, i);
     results[p] = node->x;
     results[p + 1] = node->y;
     results[p + 2] = node->z;
@@ -476,40 +499,62 @@ const int pathfind(
   return nodes;
 }
 
+int emission(int value);
+
 void propagate(
   const Volume* volume,
   unsigned char* voxels,
   int* height,
-  unsigned char* light,
+  Light* light,
   int* queueA,
   int* queueB
 ) {
-  unsigned int count = 0;
-  for (int z = 0, index = 0; z < volume->depth; z++) {
-    for (int x = 0; x < volume->width; x++, index++) {
+  for (int i = 0, z = 0; z < volume->depth; z++) {
+    for (int x = 0; x < volume->width; x++, i++) {
       for (int y = volume->height - 1; y >= 0; y--) {
-        const int i = voxel(volume, x, y, z);
-        if (y == volume->height - 1 && !voxels[i]) {
-          light[i] = maxLight;
-          queueA[count++] = i;
-        }
-        if (y == 0 || voxels[i]) {
-          height[index] = y;
+        if (y == 0 || voxels[voxel(volume, x, y, z)]) {
+          height[i] = y;
           break;
         }
       }
     }
   }
-  floodLight(
-    NULL,
-    volume,
-    voxels,
-    height,
-    light,
-    queueA,
-    count,
-    queueB
-  );
+  for (int channel = 0; channel < LIGHT_CHANNELS; channel++) {
+    unsigned int count = 0;
+    if (channel == LIGHT_CHANNEL_SUNLIGHT) {
+      for (int z = 0; z < volume->depth; z++) {
+        for (int x = 0; x < volume->width; x++) {
+          const int i = voxel(volume, x, volume->height - 1, z);
+          if (!voxels[i]) {
+            light[i][channel] = volume->maxLight;
+            queueA[count++] = i;
+          }
+        }
+      }
+    } else {
+      for (int i = 0, z = 0; z < volume->depth; z++) {
+        for (int y = 0; y < volume->height; y++) {
+          for (int x = 0; x < volume->width; x++, i++) {
+            if (voxels[i] && emission(voxels[i]) == channel) {
+              light[i][channel] = volume->maxLight;
+              queueA[count++] = i;
+            }
+          }
+        }
+      }
+    }
+    floodLight(
+      NULL,
+      channel,
+      volume,
+      voxels,
+      height,
+      light,
+      queueA,
+      count,
+      queueB
+    );
+  }
 }
 
 void update(
@@ -517,7 +562,7 @@ void update(
   const Volume* volume,
   unsigned char* voxels,
   int* height,
-  unsigned char* light,
+  Light* light,
   int* queueA,
   int* queueB,
   int* queueC,
@@ -559,50 +604,95 @@ void update(
     }
   }
 
-  if (value && !current) {
-    const unsigned char level = light[i];
-    if (level != 0) {
-      light[i] = 0;
-      queueA[0] = i;
-      queueA[1] = level;
-      removeLight(
-        bounds,
-        volume,
-        voxels,
-        height,
-        light,
-        queueA,
-        2,
-        queueB,
-        queueC,
-        0
-      );
-    }
+  const int currentEmission = current ? emission(current) : 0;
+  if (currentEmission > 0 && currentEmission < LIGHT_CHANNELS) {
+    const unsigned char level = light[i][currentEmission];
+    light[i][currentEmission] = 0;
+    queueA[0] = i;
+    queueA[1] = level;
+    removeLight(
+      bounds,
+      currentEmission,
+      volume,
+      voxels,
+      height,
+      light,
+      queueA,
+      2,
+      queueB,
+      queueC,
+      0
+    );
   }
-  if (!value && current) {
-    unsigned int queueSize = 0;
-    for (unsigned char n = 0; n < 6; n++) {
-      const int neighbor = voxel(
-        volume,
-        x + lightNeighbors[n * 3],
-        y + lightNeighbors[n * 3 + 1],
-        z + lightNeighbors[n * 3 + 2]
-      );
-      if (neighbor != -1 && light[neighbor]) {
-        queueA[queueSize++] = neighbor;
+
+  if (value && !current) {
+    for (int channel = 0; channel < LIGHT_CHANNELS; channel++) {
+      const unsigned char level = light[i][channel];
+      if (level != 0) {
+        light[i][channel] = 0;
+        queueA[0] = i;
+        queueA[1] = level;
+        removeLight(
+          bounds,
+          channel,
+          volume,
+          voxels,
+          height,
+          light,
+          queueA,
+          2,
+          queueB,
+          queueC,
+          0
+        );
       }
     }
-    if (queueSize > 0) {
-      floodLight(
-        bounds,
-        volume,
-        voxels,
-        height,
-        light,
-        queueA,
-        queueSize,
-        queueC
-      );
+  }
+
+  const int valueEmission = value ? emission(value) : 0;
+  if (valueEmission > 0 && valueEmission < LIGHT_CHANNELS) {
+    light[i][valueEmission] = volume->maxLight;
+    queueA[0] = i;
+    floodLight(
+      bounds,
+      valueEmission,
+      volume,
+      voxels,
+      height,
+      light,
+      queueA,
+      1,
+      queueB
+    );
+  }
+
+  if (!value && current) {
+    for (int channel = 0; channel < LIGHT_CHANNELS; channel++) {
+      unsigned int count = 0;
+      for (unsigned char n = 0; n < 6; n++) {
+        const int neighbor = voxel(
+          volume,
+          x + lightNeighbors[n].x,
+          y + lightNeighbors[n].y,
+          z + lightNeighbors[n].z
+        );
+        if (neighbor != -1 && light[neighbor][channel]) {
+          queueA[count++] = neighbor;
+        }
+      }
+      if (count > 0) {
+        floodLight(
+          bounds,
+          channel,
+          volume,
+          voxels,
+          height,
+          light,
+          queueA,
+          count,
+          queueB
+        );
+      }
     }
   }
 }

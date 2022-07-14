@@ -12,7 +12,7 @@ class Actors extends Group {
     this.model = model;
     this.world = world;
     Actor.setupMaterial();
-    ['ambientColor', 'lightColor'].forEach((uniform) => {
+    ['ambientColor', 'light1Color', 'light2Color', 'light3Color', 'sunlightColor'].forEach((uniform) => {
       Actor.material.uniforms[uniform].value = world.material.uniforms[uniform].value;
     });
     for (let i = 0; i < count; i++) {
@@ -72,14 +72,19 @@ class Actors extends Group {
     });
   }
 
-  light(position) {
+  light(position, target) {
     const { world } = this;
     _from.copy(position).divide(world.scale).floor();
     _from.y += 2;
     const voxel = world.volume.voxel(_from);
-    return voxel !== -1 && !world.volume.memory.voxels.view[voxel] ? (
-      world.volume.memory.light.view[voxel] / 32
-    ) : 1;
+    if (voxel === -1) {
+      target.set(1, 0, 0, 0);
+    } else if (world.volume.memory.voxels.view[voxel]) {
+      target.set(0, 0, 0, 0);
+    } else {
+      target.fromArray(world.volume.memory.light.view, voxel * 4).divideScalar(world.volume.maxLight);
+    }
+    return target;
   }
 
   spawn() {
@@ -100,7 +105,7 @@ class Actors extends Group {
         world.volume.depth * 0.5 + (Math.random() - 0.5) * world.volume.depth * 0.5
       )
       .floor();
-    actor.position.y = world.volume.ground(actor.position);
+    actor.position.y = world.volume.ground(actor.position, 4);
     actor.obstacle = actor.position.clone();
     world.volume.obstacle(actor.obstacle, true, 4);
     actor.position.x += 0.5;

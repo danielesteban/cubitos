@@ -6,6 +6,8 @@ void generate(
   const int width,
   const int height,
   const int depth,
+  const unsigned char grass,
+  const unsigned char lights,
   const float frequency,
   const float gain,
   const float lacunarity,
@@ -41,8 +43,21 @@ void generate(
           && d < radius * (0.8f + 0.2f * n)
         ) {
           voxels[i] = 2 - round(fabs(fnlGetNoise3D(&simplex, z, x, y)));
-        } else if (y > 0 && voxels[i - width] != 0) {
-          voxels[i - width] = 3;
+          continue;
+        }
+        if (
+          (grass || lights)
+          && y > 0
+          && !voxels[i]
+          && (voxels[i - width] == 1 || voxels[i - width] == 2)
+        ) {
+          if (grass) {
+            voxels[i - width] = 3;
+          }
+          if (lights && fabs(fnlGetNoise3D(&simplex, z * 10, x  * 10, y * 10)) > 0.98f) {
+            voxels[i] = 2;
+            voxels[i + width] = 4 + round(fabs(fnlGetNoise3D(&simplex, x, y, z)) * 2);
+          }
         }
       }
     }

@@ -2,11 +2,13 @@ import Program from './volume.wasm';
 
 class Volume {
   constructor({
-    chunkSize = 32,
-    mapping = (f, v) => (v - 1),
     width,
     height,
     depth,
+    chunkSize = 32,
+    maxLight = 24,
+    emission = (v) => (0),
+    mapping = (f, v) => (v - 1),
     onLoad,
     onError,
   }) {
@@ -16,17 +18,17 @@ class Volume {
       }
       return;
     }
-    this.chunkSize = chunkSize;
-    this.width = width;
-    this.height = height;
-    this.depth = depth;
+    const properties = { width, height, depth, chunkSize, maxLight };
+    Object.keys(properties).forEach((key) => (
+      Object.defineProperty(this, key, { value: properties[key], writable: false })
+    ));
     const layout = [
-      { id: 'volume', type: Int32Array, size: 3 },
+      { id: 'volume', type: Int32Array, size: 5 },
       { id: 'voxels', type: Uint8Array, size: width * height * depth },
       { id: 'height', type: Int32Array, size: width * depth },
-      { id: 'light', type: Uint8Array, size: width * height * depth },
+      { id: 'light', type: Uint8Array, size: width * height * depth * 4 },
       { id: 'obstacles', type: Uint8Array, size: width * height * depth },
-      { id: 'faces', type: Float32Array, size: Math.ceil((chunkSize ** 3) * 0.5) * 6 * 5 },
+      { id: 'faces', type: Float32Array, size: Math.ceil((chunkSize ** 3) * 0.5) * 6 * 8 },
       { id: 'sphere', type: Float32Array, size: 4 },
       { id: 'box', type: Int32Array, size: 6 },
       { id: 'queueA', type: Int32Array, size: width * depth },
@@ -40,7 +42,7 @@ class Volume {
     Program()
       .then((program) => (
         WebAssembly
-          .instantiate(program, { env: { memory, mapping } })
+          .instantiate(program, { env: { emission, mapping, memory } })
           .then((instance) => {
             this.memory = layout.reduce((layout, { id, type, size }) => {
               const address = instance.exports.malloc(size * type.BYTES_PER_ELEMENT);
@@ -50,7 +52,7 @@ class Volume {
               };
               return layout;
             }, {});
-            this.memory.volume.view.set([width, height, depth]);
+            this.memory.volume.view.set([width, height, depth, chunkSize, maxLight]);
             this._ground = instance.exports.ground;
             this._mesh = instance.exports.mesh;
             this._pathfind = instance.exports.pathfind;
@@ -84,7 +86,7 @@ class Volume {
   }
 
   mesh(chunk) {
-    const { chunkSize, memory, _mesh } = this;
+    const { memory, _mesh } = this;
     const count = _mesh(
       memory.volume.address,
       memory.voxels.address,
@@ -92,7 +94,6 @@ class Volume {
       memory.faces.address,
       memory.sphere.address,
       memory.box.address,
-      chunkSize,
       chunk.x,
       chunk.y,
       chunk.z
@@ -100,7 +101,7 @@ class Volume {
     return {
       bounds: memory.sphere.view,
       count,
-      faces: new Float32Array(memory.faces.view.subarray(0, count * 5)),
+      faces: new Float32Array(memory.faces.view.subarray(0, count * 8)),
     };
   }
 

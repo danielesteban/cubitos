@@ -2,6 +2,8 @@ import Program from './worldgen.wasm';
 import Worker from 'web-worker:./worldgen.worker.js';
 
 export default ({
+  grass = true,
+  lights = true,
   frequency = 0.01,
   gain = 0.5,
   lacunarity = 2,
@@ -21,6 +23,8 @@ export default ({
       width: volume.width,
       height: volume.height,
       depth: volume.depth,
+      grass,
+      lights,
       frequency,
       gain,
       lacunarity,

@@ -11,7 +11,10 @@ class ChunkMaterial extends ShaderMaterial {
   constructor({
     atlas,
     ambientColor = new Color(0, 0, 0),
-    lightColor = new Color(1, 1, 1),
+    light1Color = new Color(1, 1, 1),
+    light2Color = new Color(1, 1, 1),
+    light3Color = new Color(1, 1, 1),
+    sunlightColor = new Color(1, 1, 1),
     light = true,
   } = {}) {
     const { uniforms, vertexShader, fragmentShader } = ShaderLib.basic;
@@ -23,7 +26,10 @@ class ChunkMaterial extends ShaderMaterial {
         ...UniformsUtils.clone(uniforms),
         atlas: { value: null },
         ambientColor: { value: ambientColor },
-        lightColor: { value: lightColor },
+        light1Color: { value: light1Color },
+        light2Color: { value: light2Color },
+        light3Color: { value: light3Color },
+        sunlightColor: { value: sunlightColor },
       },
       vertexShader: vertexShader
         .replace(
@@ -36,8 +42,13 @@ class ChunkMaterial extends ShaderMaterial {
             'varying vec3 fragUV;',
             '#endif',
             '#ifdef USE_LIGHT',
-            'attribute float light;',
-            'varying float fragLight;',
+            'attribute vec4 light;',
+            'uniform vec3 ambientColor;',
+            'uniform vec3 light1Color;',
+            'uniform vec3 light2Color;',
+            'uniform vec3 light3Color;',
+            'uniform vec3 sunlightColor;',
+            'varying vec3 fragLight;',
             '#endif',
             'mat3 rotateX(const in float rad) {',
             '  float c = cos(rad);',
@@ -100,7 +111,8 @@ class ChunkMaterial extends ShaderMaterial {
             'fragUV = vec3(uv, floor(face.w / 6.0));',
             '#endif',
             '#ifdef USE_LIGHT',
-            'fragLight = light;',
+            'vec3 lightColor = sunlightColor * light.x + light1Color * light.y + light2Color * light.z + light3Color * light.w;',
+            'fragLight = max(ambientColor, lightColor);',
             '#endif',
           ].join('\n')
         ),
@@ -117,9 +129,7 @@ class ChunkMaterial extends ShaderMaterial {
             'varying vec3 fragUV;',
             '#endif',
             '#ifdef USE_LIGHT',
-            'varying float fragLight;',
-            'uniform vec3 ambientColor;',
-            'uniform vec3 lightColor;',
+            'varying vec3 fragLight;',
             '#endif',
           ].join('\n')
         )
@@ -131,7 +141,7 @@ class ChunkMaterial extends ShaderMaterial {
             'diffuseColor *= texture(atlas, fragUV);',
             '#endif',
             '#ifdef USE_LIGHT',
-            'diffuseColor.rgb *= max(ambientColor, lightColor * fragLight);',
+            'diffuseColor.rgb *= fragLight;',
             '#endif',
           ].join('\n'),
         )

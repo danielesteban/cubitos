@@ -58,9 +58,18 @@ const volume = new Volume({
 new ChunkMaterial({
   // A DataArrayTexture or Texture to use as the atlas
   atlas: new Texture(),
-  // Light === max(ambientColor, lightColor * lightLevel);
-  ambientColor: new Color(0, 0, 0),
-  lightColor: new Color(1, 1, 1),
+  // Light === max(
+  //  ambientColor,
+  //  light1Color * light1
+  //  + light2Color * light2
+  //  + light3Color * light3
+  //  + sunlightColor * sunlight
+  // );
+  ambientColor = new Color(0, 0, 0),
+  light1Color = new Color(1, 1, 1),
+  light2Color = new Color(1, 1, 1),
+  light3Color = new Color(1, 1, 1),
+  sunlightColor = new Color(1, 1, 1),
   // Enable/Disable lighting (default: true)
   light: true,
 });
@@ -78,12 +87,20 @@ const volume = new Volume({
   depth: 128,
   // Render chunks size (default: 32)
   chunkSize: 32,
+  // Maximum light distance (default: 24)
+  maxLight: 24,
+  // Will be called to determine if a voxel emits light on a channel (optional)
+  emission: (value) => (0),
   // Will be called by the mesher to determine a texture from the atlas (optional)
   mapping: (face, value, x, y, z) => (value - 1),
   // Will be called when the volume has allocated the memory and is ready. (optional)
   onLoad: () => {
     // Generates terrain in a worker
     Worldgen({
+      // Generate grass
+      grass: true,
+      // Generate lights
+      lights: true,
       // Noise frequency (default: 0.01)
       frequency: 0.01,
       // Noise gain (default: 0.5)

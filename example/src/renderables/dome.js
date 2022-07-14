@@ -38,7 +38,7 @@ class Dome extends Mesh {
       side: BackSide,
       uniforms: {
         ...UniformsUtils.clone(uniforms),
-        diffuse: { value: new Color(0x224466) },
+        diffuse: { value: new Color(0.003, 0.005, 0.008) },
         noise: { value: Noise() },
       },
       vertexShader: vertexShader
@@ -66,8 +66,8 @@ class Dome extends Mesh {
           'include <fog_vertex>',
           [
             'include <fog_vertex>',
-            'vAltitude = clamp(normalize(position).y, 0.0, 1.0);',
-            'vNoiseUV = uv;',
+            'vAltitude = (normalize(position).y + 1.0) * 0.5;',
+            'vNoiseUV = uv * vec2(2.0, 4.0);',
             'gl_Position = gl_Position.xyww;',
           ].join('\n')
         ),
@@ -80,14 +80,14 @@ class Dome extends Mesh {
             'varying float vAltitude;',
             'varying vec2 vNoiseUV;',
             'uniform sampler2D noise;',
-            'const float granularity = 1.0 / 200.0;',
             '#include <common>',
           ].join('\n')
         )
         .replace(
           'vec4 diffuseColor = vec4( diffuse, opacity );',
           [
-            'vec4 diffuseColor = vec4( mix(diffuse, diffuse * 1.5, vAltitude), opacity );',
+            'vec4 diffuseColor = vec4(mix(diffuse * 0.5, diffuse * 1.5, vAltitude), opacity);',
+            'vec3 granularity = diffuse * 0.03;',
             'diffuseColor.rgb += mix(-granularity, granularity, texture(noise, vNoiseUV).r);',
           ].join('\n')
         )

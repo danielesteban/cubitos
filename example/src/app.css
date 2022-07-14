@@ -58,12 +58,16 @@ canvas {
   display: block;
 }
 
-#rain {
+#options {
   position: absolute;
   bottom: 1rem;
   left: 1rem;
   opacity: 0.8;
-  border-radius: 16px;
+  display: flex;
+  gap: 0.5rem;
+}
+
+#light > svg, #rain > svg {
   box-shadow: 0 0 4px rgba(0, 0, 0, .5);
   padding: 0.5rem 1rem;
   width: 24px;
@@ -73,7 +77,35 @@ canvas {
   transition: background-color ease-out .3s;
 }
 
-#rain.enabled {
+#light {
+  display: flex;
+}
+
+#light > svg:nth-child(1) {
+  border-radius: 16px 0 0 16px;
+  padding-right: 0.75rem;
+}
+
+#light > svg:nth-child(2) {
+  border-radius: 0 16px 16px 0;
+  padding-left: 0.75rem;
+}
+
+#light.day > svg:nth-child(1) {
+  background: #aa0;
+  cursor: default;
+}
+
+#light.night > svg:nth-child(2) {
+  background: #00a;
+  cursor: default;
+}
+
+#rain > svg {
+  border-radius: 16px;
+}
+
+#rain.enabled > svg {
   background-color: #55a;
 }
 
@@ -133,7 +165,7 @@ canvas {
   border-color: rgba(255, 255, 255, 0.7);
 }
 
-body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #rain, body.pointerlock #ribbon {
+body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #light, body.pointerlock #rain, body.pointerlock #ribbon {
   display: none;
 }
 

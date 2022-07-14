@@ -6,6 +6,7 @@ import {
   Matrix4,
   Scene,
   Vector3,
+  Vector4,
 } from 'three';
 import { ChunkMaterial, Volume, World, Worldgen } from 'cubitos';
 import { loadModel, loadTexture } from './core/assets.js';
@@ -31,7 +32,7 @@ const _right = new Vector3();
 const _worldUp = new Vector3(0, 1, 0);
 
 class Gameplay extends Scene {
-  constructor({ camera, postprocessing, renderer }) {
+  constructor({ camera, clock, postprocessing, renderer }) {
     super();
 
     this.dome = new Dome();
@@ -50,7 +51,7 @@ class Gameplay extends Scene {
     this.player.frustum = new Frustum();
     this.player.isWalking = true;
     this.player.lastShot = 0;
-    this.player.light = 1;
+    this.player.light = new Vector4();
     this.player.targetFloor = 0;
     this.player.targetPosition = this.player.position.clone();
     this.player.targetRotation = this.player.camera.rotation.clone();
@@ -66,12 +67,21 @@ class Gameplay extends Scene {
             width: 192,
             height: 128,
             depth: 192,
+            emission: (value) => {
+              if (value >= 4 && value <= 6) {
+                return value - 3;
+              }
+              return 0;
+            },
             mapping: (face, value) => {
               if (value === 2) {
                 return 1;
               }
-              if (face !== 2 && value === 3) {
+              if (value === 3 && face !== 2) {
                 return face === 1 ? 2 : 3;
+              }
+              if (value >= 4 && value <= 6) {
+                return value;
               }
               return 0;
             },
@@ -86,15 +96,38 @@ class Gameplay extends Scene {
         .then(([atlas, volume]) => {
           this.world = new World({
             material: new ChunkMaterial({
-              ambientColor: new Color(0.02, 0.02, 0.02),
-              lightColor: new Color(0.8, 0.8, 0.6),
               atlas,
+              ambientColor: new Color(0.01, 0.01, 0.01),
+              light1Color: new Color(0.8, 0.2, 0.2),
+              light2Color: new Color(0.2, 0.2, 0.8),
+              light3Color: new Color(0.8, 0.8, 0.2),
             }),
             volume,
           });
           this.world.scale.setScalar(0.5);
           this.world.updateMatrix();
           this.add(this.world);
+          
+          this.sunlight = {
+            background: new Color(0x224466),
+            color: new Color(0.7, 0.7, 0.5),
+            target: 1,
+            value: 0,
+          };
+          {
+            const toggle = document.getElementById('light');
+            const [day, night] = toggle.getElementsByTagName('svg');
+            day.addEventListener('click', () => {
+              toggle.classList.remove('night');
+              toggle.classList.add('day');
+              this.sunlight.target = 1;
+            }, false);
+            night.addEventListener('click', () => {
+              toggle.classList.remove('day');
+              toggle.classList.add('night');
+              this.sunlight.target = 0;
+            }, false);
+          }
 
           this.dome.position
             .set(volume.width * 0.5, 0, volume.depth * 0.5)
@@ -106,7 +139,7 @@ class Gameplay extends Scene {
             volume.height - 1,
             Math.floor(volume.depth * 0.5)
           );
-          this.player.position.y = volume.ground(this.player.position);
+          this.player.position.y = volume.ground(this.player.position, 4);
           this.player.position.x += 0.5;
           this.player.position.z += 0.5;
           this.player.position.multiply(this.world.scale);
@@ -118,17 +151,20 @@ class Gameplay extends Scene {
 
           this.rain = new Rain({ world: this.world });
           this.add(this.rain);
-          const toggle = document.getElementById('rain');
-          toggle.addEventListener('click', () => {
-            toggle.classList.toggle('enabled');
-            this.rain.visible = !this.rain.visible;
-            if (this.rain.visible) {
-              this.rain.reset(this.player.position);
-            }
-          }, false);
+          {
+            const toggle = document.getElementById('rain');
+            toggle.addEventListener('click', () => {
+              toggle.classList.toggle('enabled');
+              this.rain.visible = !this.rain.visible;
+              if (this.rain.visible) {
+                this.rain.reset(this.player.position);
+              }
+            }, false);
+          }
 
           this.world.atlasIndex = 0;
           this.loading.classList.remove('enabled');
+          clock.start();
         }),
     ])
       .then(([bot]) => {
@@ -151,7 +187,8 @@ class Gameplay extends Scene {
     }
     projectiles.onAnimationTick(delta);
     rain.onAnimationTick(delta, player.position);
-    sfx.onAnimationTick(delta, player.camera, actors.light(player.position), rain.visible);
+    sfx.onAnimationTick(delta, player.camera, actors.light(player.position, player.light).x, rain.visible);
+    this.updateSunlight(delta);
   }
 
   processPlayerMovement(delta) {
@@ -256,12 +293,24 @@ class Gameplay extends Scene {
     if (input.buttons.interactDown) {
       player.isWalking = !player.isWalking;
       if (player.isWalking) {
-        const y = world.volume.ground(_origin.copy(player.targetPosition).divide(world.scale).floor());
+        const y = world.volume.ground(_origin.copy(player.targetPosition).divide(world.scale).floor(), 4);
         if (y !== -1) {
           player.targetFloor = y * world.scale.y;
         }
       }
     }
+  }
+
+  updateSunlight(delta) {
+    const { sunlight, dome, rain, world } = this;
+    if (sunlight.target === sunlight.value) {
+      return;
+    }
+    sunlight.value += Math.min(Math.max(sunlight.target - sunlight.value, delta * -2), delta * 2);
+    sunlight.value = Math.min(Math.max(sunlight.value, 0), 1);
+    dome.material.uniforms.diffuse.value.copy(sunlight.background).multiplyScalar(Math.max(sunlight.value, 0.02));
+    rain.material.uniforms.diffuse.value.copy(sunlight.background).multiplyScalar(Math.max(sunlight.value, 0.1));
+    world.material.uniforms.sunlightColor.value.copy(sunlight.color).multiplyScalar(sunlight.value);
   }
 }
 
