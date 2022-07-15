@@ -1,11 +1,17 @@
 import {
   InstancedBufferGeometry,
   InstancedInterleavedBuffer,
-	InterleavedBufferAttribute,
+  InterleavedBufferAttribute,
+  Matrix4,
   Mesh,
   PlaneGeometry,
   Sphere,
+  Vector4,
 } from 'three';
+
+const _face = new Vector4();
+const _intersects = [];
+const _translation = new Matrix4();
 
 class Chunk extends Mesh {
   static setupGeometry() {
@@ -20,6 +26,28 @@ class Chunk extends Mesh {
       position: plane.getAttribute('position'),
       normal: plane.getAttribute('normal'),
       uv,
+      raycast: new Mesh(plane),
+      rotations: Array.from({ length: 6 }, (v, i) => {
+        const rotation = new Matrix4();
+        switch (i) {
+          case 1:
+            rotation.makeRotationX(Math.PI * -0.5);
+            break;
+          case 2:
+            rotation.makeRotationX(Math.PI * 0.5);
+            break;
+          case 3:
+            rotation.makeRotationY(Math.PI * -0.5);
+            break;
+          case 4:
+            rotation.makeRotationY(Math.PI * 0.5);
+            break;
+          case 5:
+            rotation.makeRotationY(Math.PI);
+            break;
+        }
+        return rotation;
+      }),
     };
   }
 
@@ -39,6 +67,28 @@ class Chunk extends Mesh {
     this.volume = volume;
     this.updateMatrix();
     this.update();
+  }
+
+  raycast(raycaster, intersects) {
+    const { raycast, rotations } = Chunk.geometry;
+    const { geometry, matrixWorld, visible } = this;
+    if (!visible) {
+      return;
+    }
+    const face = geometry.getAttribute('face');
+    for (let i = 0, l = geometry.instanceCount; i < l; i++) {
+      _face.fromBufferAttribute(face, i);
+      raycast.matrixWorld
+        .multiplyMatrices(matrixWorld, _translation.makeTranslation(_face.x, _face.y, _face.z))
+        .multiply(rotations[Math.floor(_face.w % 6)]);
+      raycast.raycast(raycaster, _intersects);
+      _intersects.forEach((intersect) => {
+        intersect.object = this;
+        intersect.face.normal.transformDirection(raycast.matrixWorld);
+        intersects.push(intersect);
+      });
+      _intersects.length = 0;
+    }
   }
 
   update() {
