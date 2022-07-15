@@ -109,6 +109,42 @@ canvas {
   background-color: #55a;
 }
 
+#toolbar {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translate(-50%, 0);
+  opacity: 0.8;
+  display: flex;
+  gap: 0.25rem;
+}
+
+#toolbar > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 0;
+  outline: none;
+  font-family: inherit;
+  font-weight: inherit;
+  box-shadow: 0 0 4px rgba(0, 0, 0, .5);
+  width: 42px;
+  height: 42px;
+  border-radius: 4px;
+  background-color: #000;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color ease-out .3s;
+}
+
+#toolbar > button.enabled {
+  background-color: #5a5;
+  cursor: default;
+}
+
 #renderer {
   position: relative;
   width: 100vw;
@@ -165,7 +201,7 @@ canvas {
   border-color: rgba(255, 255, 255, 0.7);
 }
 
-body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #light, body.pointerlock #rain, body.pointerlock #ribbon {
+body.pointerlock #credits, body.pointerlock #debug, body.pointerlock #light, body.pointerlock #rain, body.pointerlock #ribbon, body.pointerlock #toolbar {
   display: none;
 }
 

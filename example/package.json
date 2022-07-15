@@ -7,13 +7,13 @@
     "start": "npm run build -- -w"
   },
   "dependencies": {
-    "cubitos": "^0.0.19",
+    "cubitos": "^0.0.20",
     "three": "^0.142.0"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^3.1.9",
     "@rollup/plugin-node-resolve": "^13.3.0",
-    "rollup": "^2.76.0",
+    "rollup": "^2.77.0",
     "rollup-plugin-copy": "^3.4.0",
     "rollup-plugin-livereload": "^2.0.5",
     "rollup-plugin-postcss": "^4.0.2",

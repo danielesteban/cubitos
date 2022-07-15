@@ -14,6 +14,7 @@ import Actors from './core/actors.js';
 import Input from './core/input.js';
 import Projectiles from './core/projectiles.js';
 import SFX from './core/sfx.js';
+import Toolbar from './core/toolbar.js';
 import Dome from './renderables/dome.js';
 import Rain from './renderables/rain.js';
 
@@ -43,6 +44,7 @@ class Gameplay extends Scene {
     this.postprocessing = postprocessing;
     this.sfx = new SFX();
     this.add(this.sfx);
+    this.toolbar = new Toolbar();
 
     camera.position.set(0, 1.6, 0);
     camera.rotation.set(0, 0, 0, 'YXZ');
@@ -147,6 +149,14 @@ class Gameplay extends Scene {
           this.player.targetPosition.copy(this.player.position);
 
           this.projectiles = new Projectiles({ sfx: this.sfx, world: this.world });
+          this.projectiles.addEventListener('hit', ({ object, point }) => {
+            if (object === this.world) {
+              _origin.copy(point).divide(this.world.scale).floor();
+              const radius = this.toolbar.tool === 0 ? (3 + Math.floor(Math.random() * 2)) : 1;
+              const value = this.toolbar.tool === 0 ? 0 : 3 + this.toolbar.tool;
+              this.world.update(_origin, radius, (d, v, p) => p.y === 0 ? -1 : value);
+            }
+          });
           this.add(this.projectiles);
 
           this.rain = new Rain({ world: this.world });

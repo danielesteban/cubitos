@@ -33,7 +33,7 @@ class Actors extends Group {
       }
       _from.copy(actor.position).divide(world.scale).floor();
       const ground = world.volume.ground(_from, 4);
-      if (ground !== _from.y) {
+      if (ground !== -1 && ground !== _from.y) {
         _from.y = ground;
         actor.position.copy(_from);
         world.volume.obstacle(actor.obstacle, false, 4);

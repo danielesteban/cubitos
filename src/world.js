@@ -78,13 +78,13 @@ class World extends Group {
     let brush = brushes.get(radius);
     if (!brush) {
       brush = [];
-      const center = (new Vector3()).setScalar(-0.5);
-      for (let z = -radius; z <= radius; z += 1) {
-        for (let y = -radius; y <= radius; y += 1) {
-          for (let x = -radius; x <= radius; x += 1) {
+      const center = new Vector3();
+      for (let z = -radius; z <= radius; z++) {
+        for (let y = -radius; y <= radius; y++) {
+          for (let x = -radius; x <= radius; x++) {
             const point = new Vector3(x, y, z);
             point.d = point.distanceTo(center);
-            if (point.d <= radius) {
+            if (point.d < radius) {
               brush.push(point);
             }
           }
