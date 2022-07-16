@@ -11,22 +11,23 @@ import {
 
 const _face = new Vector4();
 const _intersects = [];
+const _sphere = new Sphere();
 const _translation = new Matrix4();
 
 class Chunk extends Mesh {
   static setupGeometry() {
-    const plane = new PlaneGeometry(1, 1, 1, 1);
-    plane.translate(0, 0, 0.5);
-    const uv = plane.getAttribute('uv');
+    const face = new PlaneGeometry(1, 1, 1, 1);
+    face.translate(0, 0, 0.5);
+    const uv = face.getAttribute('uv');
     for (let i = 0, l = uv.count; i < l; i++) {
       uv.setXY(i, uv.getX(i), 1.0 - uv.getY(i));
     }
     Chunk.geometry = {
-      index: plane.getIndex(),
-      position: plane.getAttribute('position'),
-      normal: plane.getAttribute('normal'),
+      index: face.getIndex(),
+      position: face.getAttribute('position'),
+      normal: face.getAttribute('normal'),
       uv,
-      raycast: new Mesh(plane),
+      instance: new Mesh(face),
       rotations: Array.from({ length: 6 }, (v, i) => {
         const rotation = new Matrix4();
         switch (i) {
@@ -70,21 +71,26 @@ class Chunk extends Mesh {
   }
 
   raycast(raycaster, intersects) {
-    const { raycast, rotations } = Chunk.geometry;
+    const { instance, rotations } = Chunk.geometry;
     const { geometry, matrixWorld, visible } = this;
     if (!visible) {
+      return;
+    }
+    _sphere.copy(geometry.boundingSphere);
+    _sphere.applyMatrix4(matrixWorld);
+    if (!raycaster.ray.intersectsSphere(_sphere)) {
       return;
     }
     const face = geometry.getAttribute('face');
     for (let i = 0, l = geometry.instanceCount; i < l; i++) {
       _face.fromBufferAttribute(face, i);
-      raycast.matrixWorld
+      instance.matrixWorld
         .multiplyMatrices(matrixWorld, _translation.makeTranslation(_face.x, _face.y, _face.z))
         .multiply(rotations[Math.floor(_face.w % 6)]);
-      raycast.raycast(raycaster, _intersects);
+      instance.raycast(raycaster, _intersects);
       _intersects.forEach((intersect) => {
         intersect.object = this;
-        intersect.face.normal.transformDirection(raycast.matrixWorld);
+        intersect.face.normal.transformDirection(instance.matrixWorld);
         intersects.push(intersect);
       });
       _intersects.length = 0;
